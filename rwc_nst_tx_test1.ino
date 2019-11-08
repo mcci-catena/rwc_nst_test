@@ -42,6 +42,9 @@ Author:
 #define TX_INTERVAL 2000        // milliseconds
 #define RX_RSSI_INTERVAL 100    // milliseconds
 
+// edit this to change the number of uplinks per tx test run.
+constexpr unsigned kTxTestCount = 3;
+
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
 // DISABLE_JOIN is set in arduino-lmoc/project_config/lmic_project_config.h,
@@ -462,7 +465,7 @@ void loop() {
   case 'C': case 'c':
     sendRxCount();
     break;
-  
+
   default:
     Serial.println("\nUnrecognized");
     break;
@@ -472,7 +475,7 @@ void loop() {
 void startTx()
   {
   // setup initial job
-  gTxCount = 3;
+  gTxCount = kTxTestCount;
   os_setCallback(&txjob, tx_func);
   fBusy = true;
   }
