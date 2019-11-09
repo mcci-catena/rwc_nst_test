@@ -29,7 +29,7 @@ Commands are given as single characters. Commands are not case sensitive. The de
 During setup, the sketch prints a quick prompt:
 
 ```console
-Starting rwc_nst_tx_test1
+Starting rwc_nst_test
 Frequency: 902.3MHz  LMIC.datarate: 3  LMIC.txpow: 21
 ```
 

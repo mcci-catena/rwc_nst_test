@@ -1,6 +1,6 @@
 /*
 
-Module:  raw-halconfig.ino
+Module:  rwc_nst_test.ino
 
 Function:
   Auto-configured raw test example, for Adafruit Feather M0 LoRa
@@ -15,7 +15,7 @@ Author:
 */
 
 /*******************************************************************************
- * Copyright (c) 2015 Matthijs Kooijman
+ * Portions Copyright (c) 2015 Matthijs Kooijman
  *
  * Permission is hereby granted, free of charge, to anyone
  * obtaining a copy of this document and accompanying files,
@@ -132,7 +132,8 @@ static void rxtimeout_func(osjob_t *job) {
 
 void startRx()
   {
-  Serial.println("start RX test");
+  Serial.print("\nStart RX test: capturing raw downlink for "); Serial.print(RX_TIMEOUT / 1000.0); Serial.println("seconds.");
+  Serial.print("At RWC5020, select NST>Signal Generator, then Run.");
 
   digitalWrite(LED_BUILTIN, HIGH); // on
 
@@ -193,7 +194,7 @@ void setup() {
         /* wait for the PC */;
 
   Serial.begin(115200);
-  Serial.println("Starting rwc_nst_tx_test1");
+  Serial.println("Starting rwc_nst_test");
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -474,6 +475,7 @@ void loop() {
 
 void startTx()
   {
+  Serial.println("\nTransmit test: RWC5020A should be in NST > Signal Analyzer mode");
   // setup initial job
   gTxCount = kTxTestCount;
   os_setCallback(&txjob, tx_func);
