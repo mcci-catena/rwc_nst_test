@@ -82,6 +82,12 @@ end RX test
 RxCount:10
 ```
 
+## Sample run
+
+Here's a quick demo:
+
+![GIF of a test run](assets/rwc_nst_test_terminal.gif)
+
 ## Automation Notes
 
 Refer to "[Remote Example for Production Tests](http://redwoodcomm.com/lib/download.php?file_name=Remote_Example_for_Production_Tests_v1.2.pdf&save_file=a_201908130454350.pdf&meta=free)" for instructions on how a completely automatic test can be built by using the remote-control features of the RWC5020 and a test control computer.
