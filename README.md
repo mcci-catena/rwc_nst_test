@@ -1,4 +1,4 @@
-# RedwoodComm RWC5020x Non-Signaling Test sketch
+# RedwoodComm RWC5020x Non-Signaling Test Demo Sketch
 
 This sketch is used with a [RedwoodComm](http://redwoodcomm.com/product/01.php?cate_1=32) RWC5020A or RWC5020B LoRaWAN Tester to demonstrate non-signaling test mode for testing LoRa&reg; devices in production. Note that this can be used with any LoRa radio; use of LoRaWAN&reg; packet format is not assumed or required.
 
@@ -31,6 +31,7 @@ During setup, the sketch prints a quick prompt:
 ```console
 Starting rwc_nst_test
 Frequency: 902.3MHz  LMIC.datarate: 3  LMIC.txpow: 21
+===> enter T for Tx text, R for Rx test, C for Rx count:
 ```
 
 The Frequency and data rate are important for setting up the RWC5020A.
@@ -50,7 +51,11 @@ Put the RWC5020x in Signal Analyzer mode, and press `RUN`.
 Then press the `t` key. The sketch sends 3 uplink messages then stops.  Output looks like this:
 
 ```console
-t...tx complete
+===> enter T for Tx text, R for Rx test, C for Rx count: t
+Transmit test: RWC5020A should be in NST > Signal Analyzer mode
+...
+tx test complete
+===> enter T for Tx text, R for Rx test, C for Rx count:
 ```
 
 Check to confirm that the messages were properly received. You can edit the sketch to change the number of uplinks.
@@ -68,9 +73,12 @@ To get the count of received messages, press the `c` key.
 A complete test and fetch of receive count looks like this:
 
 ```console
-rstart RX test
-..........end RX test
-c
+===> enter T for Tx text, R for Rx test, C for Rx count: r
+Start RX test: capturing raw downlink for 5.00 seconds.
+At RWC5020, select NST>Signal Generator, then Run.
+..........
+end RX test
+===> enter T for Tx text, R for Rx test, C for Rx count: c
 RxCount:10
 ```
 

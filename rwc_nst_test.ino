@@ -474,6 +474,7 @@ void loop() {
 
   default:
     Serial.println("\nUnrecognized");
+    doPrompt();
     break;
     }
 }
@@ -491,5 +492,5 @@ void sendRxCount()
   {
   Serial.println();
   Serial.print("RxCount:"); Serial.println(gRxCount);
-  Serial.flush();
+  doPrompt();
   }
