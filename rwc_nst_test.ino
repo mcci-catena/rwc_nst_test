@@ -126,14 +126,21 @@ static void rxtimeout_func(osjob_t *job) {
 
   digitalWrite(LED_BUILTIN, LOW); // off
   os_clearCallback(&LMIC.osjob);
-  Serial.println("end RX test");
-  fBusy = false;
+  Serial.println("\nend RX test");
+  doPrompt();
 }
+
+void doPrompt()
+  {
+  Serial.print("===> enter T for Tx text, R for Rx test, C for Rx count: ");
+  Serial.flush();
+  fBusy = false;
+  }
 
 void startRx()
   {
-  Serial.print("\nStart RX test: capturing raw downlink for "); Serial.print(RX_TIMEOUT / 1000.0); Serial.println("seconds.");
-  Serial.print("At RWC5020, select NST>Signal Generator, then Run.");
+  Serial.print("\nStart RX test: capturing raw downlink for "); Serial.print(RX_TIMEOUT / 1000.0); Serial.println(" seconds.");
+  Serial.println("At RWC5020, select NST>Signal Generator, then Run.");
 
   digitalWrite(LED_BUILTIN, HIGH); // on
 
@@ -177,7 +184,7 @@ static void tx_func (osjob_t* job) {
   else
     {
     Serial.println("\ntx test complete");
-    fBusy = false;
+    doPrompt();
     }
 }
 
@@ -437,9 +444,7 @@ void setup() {
             Serial.print("MHz");
   Serial.print("  LMIC.datarate: "); Serial.print(LMIC.datarate);
   Serial.print("  LMIC.txpow: "); Serial.println(LMIC.txpow);
-  Serial.print("===> enter T for Tx text, R for Rx test, C for Rx count: ");
-  Serial.flush();
-
+  doPrompt();
 }
 
 void loop() {
