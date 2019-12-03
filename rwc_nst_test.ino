@@ -83,16 +83,29 @@ void setup()
 
     setup_flash();
 
+    setup_lmic();
     setup_commands();
     setup_test();
     }
 
 void setup_platform()
     {
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, 1);
+
     gCatena.begin();
+
+    digitalWrite(LED_BUILTIN, 0);
+
     while (! Serial)
+        {
         /* wait for USB attach */
         yield();
+        digitalWrite(LED_BUILTIN, 1);
+        delay(100);
+        digitalWrite(LED_BUILTIN, 0);
+        delay(900);
+        }
     }
 
 void setup_printSignOn()
@@ -138,6 +151,31 @@ void setup_flash(void)
         gSPI2.end();
         gCatena.SafePrintf("No FLASH found: check hardware\n");
         }
+    }
+
+void setup_lmic()
+    {
+    // initialize runtime env
+    // don't die mysteriously; die noisily.
+    const lmic_pinmap *pPinMap = Arduino_LMIC::GetPinmap_ThisBoard();
+
+    if (pPinMap == nullptr) 
+        {
+        for (;;) 
+            {
+            // flash lights, sleep.
+            for (int i = 0; i < 5; ++i) 
+                {
+                digitalWrite(LED_BUILTIN, 1);
+                delay(100);
+                digitalWrite(LED_BUILTIN, 0);
+                delay(900);
+                }
+            Serial.println(F("board not known to library; add pinmap or update getconfig_thisboard.cpp"));
+            }
+        }
+
+    os_init_ex(pPinMap);
     }
 
 void setup_commands()

@@ -222,7 +222,7 @@ cCommandStream::CommandStatus cmdParam(
         char buf[64];
         if (gTest.getParam(argv[1], buf, sizeof(buf)))
             pThis->printf("%s\n", buf);
-        else if (strcasecmp(argv[1], "help") || argv[1][0] == '?')
+        else if (strcasecmp(argv[1], "help") == 0|| argv[1][0] == '?')
             {
             for (auto & p : cTest::ParamInfo)
                 {

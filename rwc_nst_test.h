@@ -60,6 +60,7 @@ private:
     static constexpr sf_t kDefaultSpreadingFactor           = SF7;
     static constexpr bw_t kDefaultBandwidth                 = BW125;
     static constexpr std::int8_t kDefaultRxRssiDbMax        = -80;
+    static constexpr float kDefaultClockError               = 0.0;  // 0 percent, no error
 
 public:
     struct Params
@@ -69,6 +70,7 @@ public:
         std::uint32_t   RxRssiIntervalUs;
         std::uint32_t   TxTestCount;
         std::uint32_t   Freq;
+        float           ClockError;
         cr_t            CodingRate;
         sf_t            SpreadingFactor;
         bw_t            Bandwidth;
@@ -82,6 +84,7 @@ public:
         RxRssiIntervalUs,
         TxTestCount,
         Freq,
+        ClockError,
         CodingRate,
         SpreadingFactor,
         Bandwidth,
@@ -115,6 +118,7 @@ private:
             .RxRssiIntervalUs = kRxRssiIntervalUsDefault,
             .TxTestCount = kTxTestCountDefault,
             .Freq = kDefaultFreq,
+            .ClockError = kDefaultClockError,
             .CodingRate = kDefaultCodingRate,
             .SpreadingFactor = kDefaultSpreadingFactor,
             .Bandwidth = kDefaultBandwidth,
@@ -151,7 +155,7 @@ public:
         StartRx,     // request to start RX test
         };
 
-    static constexpr char *getStateName(State s)
+    static constexpr const char *getStateName(State s)
         {
         switch (s)
             {
@@ -229,6 +233,8 @@ private:
     void rxTestStop();
     // set up LMIC from Params
     void setupLMIC(const Params &params);
+
+    static osjobcbfn_t txTestDone;
 
     //------------------------------------
     // the various operating properties

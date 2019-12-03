@@ -25,6 +25,7 @@ const cTest::ParamInfo_t cTest::ParamInfo[] =
     { "LBT.time",           "listen-before-talk measurement time (us)" },
     { "TxTestCount",        "transmit test repeat count" },
     { "Frequency",          "test frequency (Hz)" },
+    { "ClockError",         "clock error (%)" },
     { "CodingRate",         "coding rate (4/8, 5/8, 6/8, 7/8)" },
     { "SpreadingFactor",    "7-12 or FSK" },
     { "Bandwidth",          "125, 250, or 500 (kHz)" },
@@ -149,19 +150,37 @@ void cTest::setupLMIC(const cTest::Params &params)
     LMIC.lbt_ticks = us2osticks(params.RxRssiIntervalUs);
     LMIC.lbt_dbmax = params.RxRssiDbMax;
 
+    float clockError = std::abs(params.ClockError * MAX_CLOCK_ERROR / 100.0) + 0.5;
+    LMIC_setClockError(clockError >= UINT16_MAX ? UINT16_MAX : u2_t(clockError));
+
     gCatena.SafePrintf("Freq=%u Hz, ", LMIC.freq);
     if (getSf(LMIC.rps) == FSK)
         gCatena.SafePrintf("FSK");
     else
-        gCatena.SafePrintf("LoRa SF%u", getSf(LMIC.rps) + 6);
+        {
+        gCatena.SafePrintf(
+            "LoRa SF%u, BW%u", 
+            getSf(LMIC.rps) + 6,
+            125 << getBw(LMIC.rps)
+            );
+        }
+
+    u2_t ceppk = LMIC.client.clockError * 1000 / MAX_CLOCK_ERROR;
 
     gCatena.SafePrintf(
-        ", BW%u, CR 4/%u, CRC=%u, LBT=%u ms/%d dB\n",
-        125 << getBw(LMIC.rps),
+        ", CR 4/%u, CRC=%u, LBT=%u ms/%d dB, clockError=%u.%u (0x%x)\n",
         4 + getCr(LMIC.rps),
+        ! getNocrc(LMIC.rps),
         osticks2us(LMIC.lbt_ticks),
-        LMIC.lbt_dbmax
+        LMIC.lbt_dbmax,
+        ceppk / 10, ceppk % 10, LMIC.client.clockError
         );
+    }
+
+void cTest::txTestDone(osjob_t *job)
+    {
+    gTest.m_Tx.fIdle = true;
+    gTest.m_fsm.eval();
     }
 
 // transmit test driver
@@ -176,15 +195,19 @@ bool cTest::txTest(
         this->m_Tx.fIdle = true;
         this->m_Tx.fContinuous = this->m_Tx.Count == 0;
 
-        gCatena.SafePrintf("Start TX test: ");
+        gCatena.SafePrintf("Start TX test: %u bytes, ", this->m_Tx.nData);
+
         if (m_Tx.fContinuous)
             gCatena.SafePrintf("continous");
         else
             gCatena.SafePrintf("%u packets", this->m_Tx.Count);
 
         // setup LMIC and print settings
+        gCatena.SafePrintf(". ");
         this->setupLMIC(this->m_params);
         }
+
+    os_runloop_once();
 
     if (! this->m_Tx.fIdle)
         return false;
@@ -204,21 +227,27 @@ bool cTest::txTest(
         // reset the radio.
         os_radio(RADIO_RST);
 
-        // give radio time to responsd to reset
-        delay(1);
+        // print a dot
+        gCatena.SafePrintf("<tx>\n");
 
+        if (! this->m_Tx.fContinuous)
+            --this->m_Tx.Count;
+    
+        // give radio time to responsd to reset
+        digitalWrite(LED_BUILTIN, 1);
+        delay(1);
+        digitalWrite(LED_BUILTIN, 0);
+    
         // load up the buffer.
         memcpy(LMIC.frame, this->m_Tx.Data, this->m_Tx.nData);
+        LMIC.dataLen = this->m_Tx.nData;
 
         // set the done function
-        LMIC.osjob.func = [](osjob_t *job)
-            {
-            gTest.m_Tx.fIdle = true;
-            gTest.m_fsm.eval();
-            };
+        LMIC.osjob.func = cTest::txTestDone;
 
         this->m_Tx.fIdle = false;
         os_radio(RADIO_TX);
+        return false;
         }
     }
 
@@ -267,7 +296,10 @@ bool cTest::rxTest(
                 );
             }
         }
+
     // now, evaluate state
+    os_runloop_once();
+
     if (this->m_fStopTest)
         {
         this->rxTestStop();
@@ -329,6 +361,8 @@ bool cTest::getParam(const char *pKey, char *pBuf, size_t nBuf) const
         {
         if (strcasecmp(pKey, p.name) == 0)
             return cTest::getParamByKey(ParamKey(i), pBuf, nBuf);
+
+        ++i;
         }
     
     return false;
@@ -358,6 +392,13 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::Freq:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.Freq);
+        break;
+
+    case ParamKey::ClockError:
+        {
+        unsigned ceppk = std::abs(this->m_params.ClockError * 10) + 0.5;
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u.%u%%", ceppk / 10, ceppk % 10);
+        }
         break;
 
     case ParamKey::CodingRate:
@@ -394,6 +435,8 @@ bool cTest::setParam(const char *pKey, const char *pValue)
         {
         if (strcasecmp(pKey, p.name) == 0)
             return cTest::setParamByKey(ParamKey(i), pValue);
+
+        ++i;
         }
     
     return false;
@@ -405,13 +448,28 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
     size_t nValue = strlen(pValue);
 
     auto parseUnsigned = [](const char *pValue, size_t nValue, std::uint32_t &result) -> bool
-                            {
-                            if (nValue == 0)
-                                return false;
+            {
+            if (nValue == 0)
+                return false;
 
-                            bool fOverflow = false;
-                            return McciAdkLib_BufferToUint32(pValue, nValue, 10, &result, &fOverflow) == nValue && fOverflow == false;
-                            };
+            bool fOverflow = false;
+            std::uint32_t nonce;
+            bool fResult = McciAdkLib_BufferToUint32(pValue, nValue, 10, &nonce, &fOverflow) == nValue && fOverflow == false;
+            if (fResult)
+                result = nonce;
+            return fResult;
+            };
+
+    auto parseUnsignedPartial = 
+        [](const char *pValue, size_t nValue, std::uint32_t &result, size_t &nParsed) -> bool
+            {
+            if (nValue == 0)
+                return false;
+
+            bool fOverflow = false;
+            nParsed = McciAdkLib_BufferToUint32(pValue, nValue, 10, &result, &fOverflow);
+            return ! fOverflow;
+            };
 
     switch (key)
         {
@@ -434,6 +492,60 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
     case ParamKey::Freq:
         fResult = parseUnsigned(pValue, nValue, this->m_params.Freq);
         break;
+
+    case ParamKey::ClockError:
+        {
+        size_t nParsed;
+        std::uint32_t nonce;
+        float clockError;
+
+        if (nValue > 0 && pValue[nValue-1] == '%')
+            --nValue;
+
+        if (nValue > 0 && pValue[0] == '.')
+            {
+            // only have a fraction
+            nParsed = 0;
+            nonce = 0;
+            fResult = true;
+            }
+        else
+            {
+            fResult = parseUnsignedPartial(pValue, nValue, nonce, nParsed);
+            }
+
+        if (fResult)
+            {
+            clockError = nonce;
+            }
+    
+        if (fResult && nParsed < nValue && pValue[nParsed] == '.')
+            {
+            // scan the fraction.
+            pValue += nParsed + 1;
+            nValue -= nParsed + 1;
+
+            if (nValue > 0)
+                {
+                fResult = parseUnsignedPartial(pValue, nValue, nonce, nParsed);
+                if (nParsed != nValue || nParsed > 6)
+                    fResult = false;
+                else
+                    {
+                    unsigned adjust = 10;
+                    for (auto i = nParsed - 1; i > 0; --i)
+                        adjust *= 10;
+                    clockError = (clockError * adjust + nonce) / adjust;
+                    }
+                }
+            }
+
+        if (fResult && ! (0.0f <= clockError && clockError <= 100.0))
+            fResult = false;
+
+        this->m_params.ClockError = clockError;
+        break;
+        }
 
     case ParamKey::CodingRate:
         {
