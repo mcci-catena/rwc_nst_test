@@ -110,7 +110,7 @@ void setup_platform()
 
 void setup_printSignOn()
     {
-    static const char dashes[] = "------------------------------------";
+    static const char dashes[] = "--------------------------------------";
 
     gCatena.SafePrintf("\n%s%s\n", dashes, dashes);
 
@@ -133,7 +133,8 @@ void setup_printSignOn()
         ((unsigned)gCatena.GetSystemClockRate() / 1000 % 1000)
         );
     gCatena.SafePrintf("Enter 'help' for a list of commands.\n");
-    gCatena.SafePrintf("(remember to select 'Line Ending: Newline' at the bottom of the monitor window.)\n");
+    gCatena.SafePrintf("Please select 'Line Ending: Newline' in the IDE monitor window.\n");
+    gCatena.SafePrintf("If using a terminal emulator, please turn off local echo.\n");
 
     gCatena.SafePrintf("%s%s\n" "\n", dashes, dashes);
     }
