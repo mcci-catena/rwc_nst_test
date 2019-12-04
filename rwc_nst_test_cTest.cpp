@@ -264,6 +264,7 @@ bool cTest::rxTest(
         this->m_fStopTest = false;
         this->m_Rx.Timeout = ms2osticks(this->m_params.RxTimeout);
         this->m_Rx.fContinuous = this->m_Rx.Timeout == 0;
+        this->m_Rx.fTimedOut = false;
         this->m_Rx.Count = 0;
         this->m_Rx.fReceiving = false;
 
