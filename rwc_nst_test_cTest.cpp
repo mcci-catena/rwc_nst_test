@@ -29,6 +29,7 @@ const cTest::ParamInfo_t cTest::ParamInfo[] =
     { ParamKey::RxTimeout,          "RxTimeout",          "receive timeout (ms)" },
     { ParamKey::SpreadingFactor,    "SpreadingFactor",    "7-12 or FSK" },
     { ParamKey::TxInterval,         "TxInterval",         "transmit interval (ms)" },
+    { ParamKey::TxPower,            "TxPower",            "transmit power (dB)" },
     { ParamKey::TxTestCount,        "TxTestCount",        "transmit test repeat count" },
     };
 
@@ -149,6 +150,7 @@ void cTest::setupLMIC(const cTest::Params &params)
     LMIC.noRXIQinversion = true;
     LMIC.lbt_ticks = us2osticks(params.RxRssiIntervalUs);
     LMIC.lbt_dbmax = params.RxRssiDbMax;
+    LMIC.radio_txpow = params.TxPower;
 
     float clockError = std::abs(params.ClockError * MAX_CLOCK_ERROR / 100.0) + 0.5;
     LMIC_setClockError(clockError >= UINT16_MAX ? UINT16_MAX : u2_t(clockError));
@@ -168,7 +170,8 @@ void cTest::setupLMIC(const cTest::Params &params)
     u2_t ceppk = LMIC.client.clockError * 1000 / MAX_CLOCK_ERROR;
 
     gCatena.SafePrintf(
-        ", CR 4/%u, CRC=%u, LBT=%u ms/%d dB, clockError=%u.%u (0x%x)\n",
+        ", TxPwr %d dB, CR 4/%u, CRC=%u, LBT=%u us/%d dB, clockError=%u.%u (0x%x)\n",
+        LMIC.radio_txpow,
         getCr(LMIC.rps) + 5 - CR_4_5,
         ! getNocrc(LMIC.rps),
         osticks2us(LMIC.lbt_ticks),
@@ -417,6 +420,10 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.RxRssiDbMax);
         break;
 
+    case ParamKey::TxPower:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.TxPower);
+        break;
+
     default:
         fResult = false;
         break;
@@ -436,34 +443,71 @@ bool cTest::setParam(const char *pKey, const char *pValue)
     return false;
     }
 
+static bool parseUnsigned(const char *pValue, size_t nValue, std::uint32_t &result)
+    {
+    if (nValue == 0)
+        return false;
+
+    bool fOverflow = false;
+    std::uint32_t nonce;
+    bool fResult = McciAdkLib_BufferToUint32(pValue, nValue, 10, &nonce, &fOverflow) == nValue && fOverflow == false;
+    if (fResult)
+        result = nonce;
+    return fResult;
+    }
+
+static bool parseUnsignedPartial(
+    const char *pValue, 
+    size_t nValue, 
+    std::uint32_t &result, 
+    size_t &nParsed
+    )
+    {
+    if (nValue == 0)
+        return false;
+
+    bool fOverflow = false;
+    nParsed = McciAdkLib_BufferToUint32(pValue, nValue, 10, &result, &fOverflow);
+    return ! fOverflow;
+    }
+
+static bool parse_int8(
+    const char *pValue, 
+    size_t nValue, 
+    std::int8_t &result
+    )
+    {
+    std::uint32_t nonce;
+    bool fMinus;
+    
+    fMinus = false;
+    if (nValue > 0 && pValue[0] == '-')
+        {
+        ++pValue, --nValue;
+        fMinus = true;
+        }
+    if (! (nValue > 0 && '0' <= pValue[0] && pValue[0] <= '9'))
+        return false;
+
+    bool fResult = parseUnsigned(pValue, nValue, nonce);
+    if (fResult && fMinus && nonce <= 128)
+        result = std::int8_t(-(int)nonce);
+    else if (fResult && !fMinus && nonce <= 127)
+        {
+        result = std::int8_t(nonce);
+        }
+    else
+        {
+        fResult = false;
+        }
+
+    return fResult;
+    }
+
 bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
     {
     bool fResult = true;
     size_t nValue = strlen(pValue);
-
-    auto parseUnsigned = [](const char *pValue, size_t nValue, std::uint32_t &result) -> bool
-            {
-            if (nValue == 0)
-                return false;
-
-            bool fOverflow = false;
-            std::uint32_t nonce;
-            bool fResult = McciAdkLib_BufferToUint32(pValue, nValue, 10, &nonce, &fOverflow) == nValue && fOverflow == false;
-            if (fResult)
-                result = nonce;
-            return fResult;
-            };
-
-    auto parseUnsignedPartial = 
-        [](const char *pValue, size_t nValue, std::uint32_t &result, size_t &nParsed) -> bool
-            {
-            if (nValue == 0)
-                return false;
-
-            bool fOverflow = false;
-            nParsed = McciAdkLib_BufferToUint32(pValue, nValue, 10, &result, &fOverflow);
-            return ! fOverflow;
-            };
 
     switch (key)
         {
@@ -556,7 +600,7 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
             fResult = false;
             break;
             }
-        this->m_params.CodingRate = cr_t(nonce - CR_4_5);
+        this->m_params.CodingRate = cr_t(nonce - 5 + CR_4_5);
         }
         break;
 
@@ -603,30 +647,11 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
         break;
 
     case ParamKey::RxRssiDbMax:
-        {
-        std::uint32_t nonce;
+        fResult = parse_int8(pValue, nValue, this->m_params.RxRssiDbMax);
+        break;
 
-        if (strcmp(pValue, "0"))
-            {
-            this->m_params.RxRssiDbMax = 0;
-            break;
-            }
-
-        if (! (nValue > 1 && pValue[0] == '-'))
-            {
-            fResult = false;
-            break;
-            }
-
-        fResult = parseUnsigned(pValue + 1, nValue - 1, nonce);
-        if (! (fResult && nonce <= 128))
-            {
-            fResult = false;
-            break;
-            }
-
-        this->m_params.RxRssiDbMax = std::int8_t(-(int)nonce);
-        }
+    case ParamKey::TxPower:
+        fResult = parse_int8(pValue, nValue, this->m_params.TxPower);
         break;
 
     default:
