@@ -92,10 +92,22 @@ public:
         Max
         };
 
-    struct ParamInfo_t
+    class ParamInfo_t
         {
-        const char *    name;
-        const char *    help;
+    private:
+        ParamKey        m_key;
+        const char *    m_name;
+        const char *    m_help;
+
+    public:
+        ParamInfo_t(ParamKey key, const char *name, const char *help)
+            : m_key(key)
+            , m_name(name)
+            , m_help(help)
+            {}
+        ParamKey getKey() const     { return this->m_key; }
+        const char *getName() const { return this->m_name; }
+        const char *getHelp() const { return this->m_help; }
         };
         
     static const ParamInfo_t ParamInfo[unsigned(ParamKey::Max)];

@@ -20,16 +20,16 @@ Author:
 
 const cTest::ParamInfo_t cTest::ParamInfo[] =
     {
-    { "RxTimeout",          "receive timeout (ms)" },
-    { "TxInterval",         "transmit interval (ms)" },
-    { "LBT.time",           "listen-before-talk measurement time (us)" },
-    { "TxTestCount",        "transmit test repeat count" },
-    { "Frequency",          "test frequency (Hz)" },
-    { "ClockError",         "clock error (%)" },
-    { "CodingRate",         "coding rate (4/8, 5/8, 6/8, 7/8)" },
-    { "SpreadingFactor",    "7-12 or FSK" },
-    { "Bandwidth",          "125, 250, or 500 (kHz)" },
-    { "LBT.dB",             "listen-before-talk maximum signal (dB)" },
+    { ParamKey::Bandwidth,          "Bandwidth",          "125, 250, or 500 (kHz)" },
+    { ParamKey::ClockError,         "ClockError",         "clock error (%)" },
+    { ParamKey::CodingRate,         "CodingRate",         "coding rate (4/8, 5/8, 6/8, 7/8)" },
+    { ParamKey::Freq,               "Frequency",          "test frequency (Hz)" },
+    { ParamKey::RxRssiDbMax,        "LBT.dB",             "listen-before-talk maximum signal (dB)" },
+    { ParamKey::RxRssiIntervalUs,   "LBT.time",           "listen-before-talk measurement time (us)" },
+    { ParamKey::RxTimeout,          "RxTimeout",          "receive timeout (ms)" },
+    { ParamKey::SpreadingFactor,    "SpreadingFactor",    "7-12 or FSK" },
+    { ParamKey::TxInterval,         "TxInterval",         "transmit interval (ms)" },
+    { ParamKey::TxTestCount,        "TxTestCount",        "transmit test repeat count" },
     };
 
 void cTest::begin()
@@ -169,7 +169,7 @@ void cTest::setupLMIC(const cTest::Params &params)
 
     gCatena.SafePrintf(
         ", CR 4/%u, CRC=%u, LBT=%u ms/%d dB, clockError=%u.%u (0x%x)\n",
-        4 + getCr(LMIC.rps),
+        getCr(LMIC.rps) + 5 - CR_4_5,
         ! getNocrc(LMIC.rps),
         osticks2us(LMIC.lbt_ticks),
         LMIC.lbt_dbmax,
@@ -356,13 +356,10 @@ void cTest::evStopTest()
 
 bool cTest::getParam(const char *pKey, char *pBuf, size_t nBuf) const
     {
-    unsigned i = 0;
     for (auto &p : cTest::ParamInfo)
         {
-        if (strcasecmp(pKey, p.name) == 0)
-            return cTest::getParamByKey(ParamKey(i), pBuf, nBuf);
-
-        ++i;
+        if (strcasecmp(pKey, p.getName()) == 0)
+            return cTest::getParamByKey(p.getKey(), pBuf, nBuf);
         }
     
     return false;
@@ -430,13 +427,10 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
 bool cTest::setParam(const char *pKey, const char *pValue) 
     {
-    unsigned i = 0;
     for (auto &p : cTest::ParamInfo)
         {
-        if (strcasecmp(pKey, p.name) == 0)
-            return cTest::setParamByKey(ParamKey(i), pValue);
-
-        ++i;
+        if (strcasecmp(pKey, p.getName()) == 0)
+            return cTest::setParamByKey(p.getKey(), pValue);
         }
     
     return false;

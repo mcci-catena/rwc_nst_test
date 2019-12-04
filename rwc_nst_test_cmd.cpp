@@ -1,6 +1,6 @@
 /*
 
-Module: rwc_nst_test.cpp
+Module: rwc_nst_test_cmd.cpp
 
 Function:
     Process the various test commands.
@@ -212,8 +212,8 @@ cCommandStream::CommandStatus cmdParam(
         for (auto & p : cTest::ParamInfo)
             {
             char buf[64];
-            if (gTest.getParam(p.name, buf, sizeof(buf)))
-                pThis->printf("%s: %s\n", p.name, buf);
+            if (gTest.getParam(p.getName(), buf, sizeof(buf)))
+                pThis->printf("%s: %s\n", p.getName(), buf);
             }
         break;
     
@@ -226,7 +226,7 @@ cCommandStream::CommandStatus cmdParam(
             {
             for (auto & p : cTest::ParamInfo)
                 {
-                pThis->printf("%s: %s\n", p.name, p.help);
+                pThis->printf("%s: %s\n", p.getName(), p.getHelp());
                 }
             }
         else
