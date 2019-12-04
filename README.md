@@ -18,68 +18,129 @@ For this test, we use the [MCCI Catena 4610](https://mcci.io/catena4610) as the 
 
 ## Overview of Sketch
 
-The sketch is very simple: it boots up, and then waits for direction from the USB port.
+The sketch is conceptually very simple: it boots up, and then waits for direction from the USB port. It's spread out into three code files.
 
-Commands are given as single characters. Commands are not case sensitive. The defined commands are.
+- `rwc_nst_test.ino` is the main program; it contains the logic for `setup()` and `loop()`. As is common in MCCI applications, it uses the Catena polling engine to do most of the work, so there's no run-time logic apparent in this file.
 
-- `t` to run a transmit test
-- `r` to run a receive test
-- `c` to print the results of a receive test.
+- `rwc_nst_test_cmd.cpp` parses commands. It sends events to the test object.
+
+- `rwc_nst_test_cTest.cpp` implements the test object. This is a finite state machine that gets messages from the command line and events from the radio.
+
+The sketch uses the standard Catena command line interpreter.
+
+Commands are given as lines of text, terminated by a new-line. Commands are not case sensitive. The defined commands are.
+
+- `tx` to run a transmit test
+- `rx` to run a receive test
+- `count` to print the results of a receive test, and to abort any running tests
+- `param` to change test parameters.
 
 During setup, the sketch prints a quick prompt:
 
 ```console
-Starting rwc_nst_test
-Frequency: 902.3MHz  LMIC.datarate: 3  LMIC.txpow: 21
-===> enter T for Tx text, R for Rx test, C for Rx count:
+----------------------------------------------------------------------------
+This is rwc_nst_test.ino v0.6.0.0.
+Target network: The Things Network / us915
+System clock rate is 32.000 MHz
+Enter 'help' for a list of commands.
+Please select 'Line Ending: Newline' in the IDE monitor window.
+If using a terminal emulator, please turn off local echo.
+----------------------------------------------------------------------------
+
+FLASH found, put power down
+Idle
 ```
 
 The Frequency and data rate are important for setting up the RWC5020A.
 
-## RWC5020A setup
+## RWC5020 setup
 
-First, set up the parameters:
+Choose the test frequency to be used. The default can be found by using `param` command and looking for "Frequency: ".  The RWC5020 and the device under test must use the same frequency. The default in the device is currently 902.3 MHz.
+
+To change the frequency on the RWC5020, first, set up the parameters:
 
 `Param` > `RF`: set `FREQ` to the uplink frequency that was displayed by the sketch. (Hint: the sketch will display the frequency.)
 
-`Param` > `NST_RX`: most defaults are OK, but set `SF` to the spreading factor that matches the displayed data rate for your selected region.  Normally the sketch tries to choose a data rate that corresponds to SF7.
+`Param` > `NST_RX`: most defaults are OK, but set `SF` to the spreading factor that matches the displayed data rate for your selected region.  The sketch defaults to SF7. This can be changed using `param SpreadingFactor #`, where `#` is `7`, `8`, `9`, `10`, `11`, or `12`.
 
 ## Transmit Tests
 
 Put the RWC5020x in Signal Analyzer mode, and press `RUN`.
 
-Then press the `t` key. The sketch sends 3 uplink messages then stops.  Output looks like this:
+Then enter a `tx` command at the Catena (enter `tx`, Enter; or use the IDE to send `tx`). The sketch sends a small number of uplink messages then stops. The number of messages is controlled by `param TxCount`, normally 3. Output looks like this:
 
 ```console
-===> enter T for Tx text, R for Rx test, C for Rx count: t
-Transmit test: RWC5020A should be in NST > Signal Analyzer mode
-...
-tx test complete
-===> enter T for Tx text, R for Rx test, C for Rx count:
+tx
+Start TX test: 4 bytes, 3 packets. Freq=902300000 Hz, LoRa SF7, BW125, TxPwr 0 dB, CR 4/5, CRC=1, LBT=0 us/-80 dB, clockError=0.0 (0x0)
+<tx>
+OK
+<tx>
+<tx>
+
+Tx test complete.
+Idle
 ```
 
-Check to confirm that the messages were properly received. You can edit the sketch to change the number of uplinks.
+Check to confirm that the messages were properly received. You can change parameters using the `param` command. Defaults are:
+
+```console
+param
+Bandwidth: 125
+ClockError: 0.0%
+CodingRate: 4/5
+Frequency: 902300000
+LBT.dB: -80
+LBT.time: 0
+RxTimeout: 5000
+SpreadingFactor: 7
+TxInterval: 2000
+TxPower: 0
+TxTestCount: 3
+OK
+```
+
+You can get help on the parameters:
+
+```console
+param help
+Bandwidth: 125, 250, or 500 (kHz)
+ClockError: clock error (%)
+CodingRate: coding rate (4/8, 5/8, 6/8, 7/8)
+Frequency: test frequency (Hz)
+LBT.dB: listen-before-talk maximum signal (dB)
+LBT.time: listen-before-talk measurement time (us)
+RxTimeout: receive timeout (ms)
+SpreadingFactor: 7-12 or FSK
+TxInterval: transmit interval (ms)
+TxPower: transmit power (dB)
+TxTestCount: transmit test repeat count
+OK
+```
 
 ## Receive Tests
 
-First, start the test at the device, by pressing the `r` key.
+First, start the test at the device, by entering the `rx` command and pressing enter.
 
 Next, put the RWC5020x in Signal **Generator** mode, and press `RUN`.
 
-The sketch will receive packets from the RWC5020x and will print a '`.`' for each message received. It will also increment a counter. After 5 seconds, the sketch will time out and finish the test.
+The sketch will receive packets from the RWC5020x and will print a '`.`' for each message received. It will also increment a counter. After a while (default 5 seconds), the sketch will time out and finish the test.
 
-To get the count of received messages, press the `c` key.
+To get the count of received messages, enter the `count` command and press enter.
 
 A complete test and fetch of receive count looks like this:
 
 ```console
-===> enter T for Tx text, R for Rx test, C for Rx count: r
-Start RX test: capturing raw downlink for 5.00 seconds.
+rx
+Start RX test: capturing raw downlink for 5000 milliseconds.
 At RWC5020, select NST>Signal Generator, then Run.
+Freq=900000000 Hz, LoRa SF7, BW125, TxPwr 0 dB, CR 4/5, CRC=1, LBT=0 us/-80 dB, clockError=0.0 (0x0)
+OK
 ..........
-end RX test
-===> enter T for Tx text, R for Rx test, C for Rx count: c
-RxCount:10
+RX test complete: received messages: 10.
+Idle
+count
+RxCount: 10
+OK
 ```
 
 ## Sample run
