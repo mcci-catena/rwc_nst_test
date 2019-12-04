@@ -270,7 +270,7 @@ bool cTest::rxTest(
 
         gCatena.SafePrintf("Start RX test: capturing raw downlink ");
         if (m_Rx.fContinuous)
-            gCatena.SafePrintf("until canceled");
+            gCatena.SafePrintf("until canceled by `count` command");
         else
             gCatena.SafePrintf("for %u milliseconds", this->m_params.RxTimeout);
 
