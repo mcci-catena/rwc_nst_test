@@ -2,6 +2,34 @@
 
 This sketch is used with a [RedwoodComm](http://redwoodcomm.com/product/01.php?cate_1=32) RWC5020A or RWC5020B LoRaWAN Tester to demonstrate non-signaling test mode for testing LoRa&reg; devices in production. Note that this can be used with any LoRa radio; use of LoRaWAN&reg; packet format is not assumed or required.
 
+<!--
+  This TOC uses the VS Code markdown TOC extension AlanWalk.markdown-toc.
+  We strongly recommend updating using VS Code, the markdown-toc extension and the
+  bierner.markdown-preview-github-styles extension. Note that if you are using
+  VS Code 1.29 and Markdown TOC 1.5.6, https://github.com/AlanWalk/markdown-toc/issues/65
+  applies -- you must change your line-ending to some non-auto value in Settings>
+  Text Editor>Files.  `\n` works for me.
+-->
+<!-- markdownlint-disable MD033 MD004 -->
+<!-- markdownlint-capture -->
+<!-- markdownlint-disable -->
+<!-- TOC depthFrom:2 updateOnSave:true -->
+
+- [About NST (Non-Signaling Test)](#about-nst-non-signaling-test)
+- [Overview of Sketch](#overview-of-sketch)
+    - [Required Libraries](#required-libraries)
+    - [Using `git-repos.dat` and `git-boot.sh`](#using-git-reposdat-and-git-bootsh)
+- [RWC5020 setup](#rwc5020-setup)
+- [Transmit Tests](#transmit-tests)
+- [Receive Tests](#receive-tests)
+- [Sample run](#sample-run)
+- [Automation Notes](#automation-notes)
+- [Meta](#meta)
+
+<!-- /TOC -->
+<!-- markdownlint-restore -->
+<!-- Due to a bug in Markdown TOC, the table is formatted incorrectly if tab indentation is set other than 4. Due to another bug, this comment must be *after* the TOC entry. -->
+
 | RWC 5020A/B LoRaWAN Tester | MCCI Catena&reg; 4610 Test device
 |-----------|------
 | [![Picture of RWC5020A](./assets/RWC5020A.png)](http://redwoodcomm.com/product/01.php?cate_1=32 "Link to RWC5020B product home page") | [![Picture of Catena 4610](./assets/Catena4610.jpg)](https://mcci.io/catena4610 "Link to MCCI Catena 4610 product page")
@@ -52,6 +80,73 @@ Idle
 ```
 
 The Frequency and data rate are important for setting up the RWC5020A.
+
+### Required Libraries
+
+| Library | Recommended Version | Minimum Version | Comments |
+|---------|:-------:|:----:|----------|
+| [`arduino-lmic`](https://github.com/mcci-catena/arduino-lmic) | HEAD | 2.3.0 | Earlier versions will fail to compile due to missing `lmic_pinmap::rxtx_rx_polarity` and `lmic_pinmap::spi_freq` fields. |
+| [`arduino-lorawan`](https://github.com/mcci-catena/arduino-lorawan) | 0.6.0 | 0.5.3.50 | Needed in order to support the Murata module used in the Catena 4551, and for bug fixes in LoRaWAN::begin handling. |
+| [`catena-mcciadk`](https://github.com/mcci-catena/Catena-mcciadk) | 0.2.1 | 0.1.2 | Needed for miscellaneous definitions |
+| [`Catena-Arduino-Platform`](https://github.com/mcci-catena/Catena-Arduino-Platform) | 0.17.0 | 0.17.0 | Needed for command line processing |
+
+### Using `git-repos.dat` and `git-boot.sh`
+
+The MCCI script [`git-boot.sh`](https://github.com/mcci-catena/Catena-Sketches/blob/master/git-boot.sh) (part of [`Catena-Sketches`](https://github.com/mcci-catena/Catena-Sketches)) can be used to automatically download libraries required for this sketch. The script fetches from HEAD of the default branch.
+
+```bash
+# fetch git-boot.sh to /tmp
+curl -o /tmp/git-boot.sh https://raw.githubusercontent.com/mcci-catena/Catena-Sketches/master/git-boot.sh
+
+# run git-boot.sh to update the libraries.
+cd ~/Documents/Arduino/sketches/rwc_nst_tst
+# use the -g option if you want a git-method clone; default is HTTPS.
+/tmp/git-boot.sh ./git-repos.dat
+```
+
+For example:
+
+```console
+$ /tmp/git-boot.sh ./git-repos.data
+Cloning into 'Catena-Arduino-Platform'...
+remote: Enumerating objects: 8, done.
+remote: Counting objects: 100% (8/8), done.
+remote: Compressing objects: 100% (5/5), done.
+Recote: Total 2796 (delta 3), reused 8 (delta 3), pack-reused 2788 eceiving objects:  98% (2741/2796)
+Receiving objects: 100% (2796/2796), 685.97 KiB | 6.79 MiB/s, done.
+Resolving deltas: 100% (2135/2135), done.
+Cloning into 'Catena-mcciadk'...
+remote: Enumerating objects: 33, done.
+remote: Counting objects: 100% (33/33), done.
+remote: Compressing objects: 100% (23/23), done.
+Receiving objects:  92% (170/184)used 19 (delta 9), pack-reused 151
+Receiving objects: 100% (184/184), 49.38 KiB | 9.88 MiB/s, done.
+Resolving deltas: 100% (89/89), done.
+Cloning into 'arduino-lmic'...
+remote: Enumerating objects: 10, done.
+remote: Counting objects: 100% (10/10), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 4834 (delta 1), reused 4 (delta 1), pack-reused 4824
+Receiving objects: 100% (4834/4834), 12.73 MiB | 6.52 MiB/s, done.
+Resolving deltas: 100% (3252/3252), done.
+Cloning into 'arduino-lorawan'...
+remote: Enumerating objects: 46, done.
+remote: Counting objects: 100% (46/46), done.
+remote: Compressing objects: 100% (33/33), done.
+remote: Total 859 (delta 17), reused 29 (delta 13), pack-reused 813R
+Receiving objects: 100% (859/859), 214.78 KiB | 7.67 MiB/s, done.
+Resolving deltas: 100% (538/538), done.
+
+==== Summary =====
+*** No repos with errors ***
+
+*** No existing repos skipped ***
+
+*** No existing repos were updated ***
+
+New repos cloned:
+Catena-Arduino-Platform Catena-mcciadk          arduino-lmic            arduino-lorawan
+```
 
 ## RWC5020 setup
 
