@@ -39,16 +39,18 @@ constexpr std::uint32_t kAppVersion = ::makeVersion(0,6,0,0);
 |
 \****************************************************************************/
 
+// two-argument version: first arg is what to return if we don't find
+// a directory separator in the second part.
+static constexpr const char *filebasename(const char *s, const char *p)
+    {
+    return p[0] == '\0'                     ? s                            :
+           (p[0] == '/' || p[0] == '\\')    ? filebasename(p + 1, p + 1)   :
+                                              filebasename(s, p + 1)       ;
+    }
+
 static constexpr const char *filebasename(const char *s)
     {
-    const char *pName = s;
-
-    for (auto p = s; *p != '\0'; ++p)
-        {
-        if (*p == '/' || *p == '\\')
-            pName = p + 1;
-        }
-    return pName;
+    return filebasename(s, s);
     }
 
 /****************************************************************************\
