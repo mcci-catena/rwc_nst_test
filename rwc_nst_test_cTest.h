@@ -253,6 +253,8 @@ private:
         {
         // transmission down-counter.
         std::uint32_t Count;
+        // time of last transmission
+        ostime_t    Tnext;
         bool        fContinuous: 1;
         bool        fIdle: 1;
         std::uint8_t nData;

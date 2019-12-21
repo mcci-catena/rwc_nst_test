@@ -197,6 +197,7 @@ bool cTest::txTest(
         this->m_Tx.Count = this->m_params.TxTestCount;
         this->m_Tx.fIdle = true;
         this->m_Tx.fContinuous = this->m_Tx.Count == 0;
+        this->m_Tx.Tnext = os_getTime();
 
         gCatena.SafePrintf("Start TX test: %u bytes, ", this->m_Tx.nData);
 
@@ -225,13 +226,21 @@ bool cTest::txTest(
         gCatena.SafePrintf("\nTx test complete.\n");
         return true;
         }
+    else if ((os_getTime() - this->m_Tx.Tnext) < 0)
+        {
+        // waiting for time to go.
+        return false;
+        }
     else
         {
+        // advance time
+        this->m_Tx.Tnext += ms2osticks(this->m_params.TxInterval);
+
         // reset the radio.
         os_radio(RADIO_RST);
 
         // print a dot
-        gCatena.SafePrintf("<tx>\n");
+        gCatena.SafePrintf(".");
 
         if (! this->m_Tx.fContinuous)
             --this->m_Tx.Count;
