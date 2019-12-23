@@ -44,6 +44,9 @@ private:
     static constexpr std::int8_t kDefaultRxRssiDbMax        = -80;
     static constexpr float kDefaultClockError               = 0.0;  // 0 percent, no error
     static constexpr std::int8_t kDefaultTxPower            = 0;
+    static constexpr std::uint16_t kRxSymsDefault           = 6;
+    static constexpr std::int8_t kRxDigOutDefault           = -1;
+    static constexpr std::int8_t kTxDigOutDefault           = -1;
 
 public:
     struct Params
@@ -54,11 +57,14 @@ public:
         std::uint32_t   TxTestCount;
         std::uint32_t   Freq;
         float           ClockError;
+        std::uint16_t   RxSyms;
         cr_t            CodingRate;
         sf_t            SpreadingFactor;
         bw_t            Bandwidth;
         std::int8_t     RxRssiDbMax;
         std::int8_t     TxPower;
+        std::int8_t     RxDigOut;
+        std::int8_t     TxDigOut;
         };
 
     enum class ParamKey : std::uint8_t
@@ -69,11 +75,14 @@ public:
         TxTestCount,
         Freq,
         ClockError,
+        RxSyms,
         CodingRate,
         SpreadingFactor,
         Bandwidth,
         RxRssiDbMax,
         TxPower,
+        RxDigOut,
+        TxDigOut,
         Max
         };
 
@@ -116,17 +125,19 @@ private:
             .TxTestCount = kTxTestCountDefault,
             .Freq = kDefaultFreq,
             .ClockError = kDefaultClockError,
+            .RxSyms = kRxSymsDefault,
             .CodingRate = kDefaultCodingRate,
             .SpreadingFactor = kDefaultSpreadingFactor,
             .Bandwidth = kDefaultBandwidth,
             .RxRssiDbMax = kDefaultRxRssiDbMax,
-            .TxPower = kDefaultTxPower
+            .TxPower = kDefaultTxPower,
+            .RxDigOut = kRxDigOutDefault,
+            .TxDigOut = kTxDigOutDefault,
             };
         };
 
 public:
-    cTest()
-        {};
+    cTest() {};
 
     // neither copyable nor movable
     cTest(const cTest&) = delete;
@@ -211,6 +222,67 @@ public:
         return this->m_DebugFlags & mask;
         }
 
+    // process LMIC trace messages for GPIO control
+    bool handleLmicEvent(const char *pMessage);
+
+    //-----------------
+    // Output handling
+    //-----------------
+    class cDigOut
+        {
+    public:
+        cDigOut() {};
+
+        void setOutput(int pin, bool fActive)
+            {
+            if (pin < 0)
+                {
+                this->off();
+                if (this->m_pin >= 0)
+                    pinMode(uint32_t(this->m_pin), INPUT);
+                }
+            else
+                {
+                if (this->m_pin != pin)
+                    {
+                    this->off();
+                    pinMode(uint32_t(this->m_pin), INPUT);
+                    }
+                pinMode(pin, OUTPUT);
+                digitalWrite(pin, !fActive);
+                }
+            this->m_pin = pin;
+            this->m_fActive = fActive;
+            }
+
+        void off() const
+            {
+            if (this->m_pin >= 0)
+                digitalWrite(uint32_t(this->m_pin), !this->m_fActive);
+            }
+        void on() const
+            {
+            if (this->m_pin >= 0)
+                digitalWrite(this->m_pin, this->m_fActive);
+            }
+        bool isEnabled() const
+            {
+            return this->m_pin >= 0;
+            }
+        bool isConfigured() const
+            {
+#if LMIC_ENABLE_event_logging
+            return true;
+#else
+            return false;
+#endif            
+            }
+
+    private:
+        int m_pin = -1;
+        bool m_fActive = true;
+        };
+
     //-----------------
     // the FSM
     //-----------------
@@ -259,6 +331,7 @@ private:
         bool        fIdle: 1;
         std::uint8_t nData;
         std::uint8_t Data[255];
+        cDigOut     DigOut;
         };
 
     Tx_t        m_Tx;
@@ -270,6 +343,7 @@ private:
         bool        fContinuous: 1;
         bool        fTimedOut: 1;
         bool        fReceiving: 1;
+        cDigOut     DigOut;
         osjob_t     TimeoutJob;
         };
 

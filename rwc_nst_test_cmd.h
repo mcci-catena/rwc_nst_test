@@ -13,6 +13,9 @@ Author:
 
 */
 
+#ifndef _rwc_nst_test_cmd_h_
+# define _rwc_nst_test_cmd_h_
+
 #pragma once
 
 #include <Catena_CommandStream.h>
@@ -21,3 +24,5 @@ McciCatena::cCommandStream::CommandFn cmdTxTest;
 McciCatena::cCommandStream::CommandFn cmdRxTest;
 McciCatena::cCommandStream::CommandFn cmdRxCount;
 McciCatena::cCommandStream::CommandFn cmdParam;
+
+#endif // !defined(_rwc_nst_test_cmd_h_)

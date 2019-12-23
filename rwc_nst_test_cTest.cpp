@@ -26,8 +26,11 @@ const cTest::ParamInfo_t cTest::ParamInfo[] =
     { ParamKey::Freq,               "Frequency",          "test frequency (Hz)" },
     { ParamKey::RxRssiDbMax,        "LBT.dB",             "listen-before-talk maximum signal (dB)" },
     { ParamKey::RxRssiIntervalUs,   "LBT.time",           "listen-before-talk measurement time (us)" },
+    { ParamKey::RxDigOut,           "RxDigOut",           "digital output to pulse during RX (pin)" },
+    { ParamKey::RxSyms,             "RxSyms",             "packet preamble timeout (symbols)" },
     { ParamKey::RxTimeout,          "RxTimeout",          "receive timeout (ms)" },
     { ParamKey::SpreadingFactor,    "SpreadingFactor",    "7-12 or FSK" },
+    { ParamKey::TxDigOut,           "TxDigOut",           "digital output to pulse during TX (pin)" },
     { ParamKey::TxInterval,         "TxInterval",         "transmit interval (ms)" },
     { ParamKey::TxPower,            "TxPower",            "transmit power (dB)" },
     { ParamKey::TxTestCount,        "TxTestCount",        "transmit test repeat count" },
@@ -151,8 +154,13 @@ void cTest::setupLMIC(const cTest::Params &params)
     LMIC.lbt_ticks = us2osticks(params.RxRssiIntervalUs);
     LMIC.lbt_dbmax = params.RxRssiDbMax;
     LMIC.radio_txpow = params.TxPower;
+    using rxsym_t = decltype(LMIC.rxsyms);
+    if (sizeof(rxsym_t) == sizeof(std::uint8_t) && params.RxSyms > 0xFFu)
+        LMIC.rxsyms = 0xFFu;
+    else
+        LMIC.rxsyms = rxsym_t(params.RxSyms);
 
-    float clockError = std::abs(params.ClockError * MAX_CLOCK_ERROR / 100.0) + 0.5;
+    float clockError = (std::abs)(params.ClockError * MAX_CLOCK_ERROR / 100.0) + 0.5;
     LMIC_setClockError(clockError >= UINT16_MAX ? UINT16_MAX : u2_t(clockError));
 
     gCatena.SafePrintf("Freq=%u Hz, ", LMIC.freq);
@@ -170,13 +178,14 @@ void cTest::setupLMIC(const cTest::Params &params)
     u2_t ceppk = LMIC.client.clockError * 1000 / MAX_CLOCK_ERROR;
 
     gCatena.SafePrintf(
-        ", TxPwr %d dB, CR 4/%u, CRC=%u, LBT=%u us/%d dB, clockError=%u.%u (0x%x)\n",
+        ", TxPwr=%d dB, CR 4/%u, CRC=%u, LBT=%u us/%d dB, clockError=%u.%u (0x%x), RxSyms=%u\n",
         LMIC.radio_txpow,
         getCr(LMIC.rps) + 5 - CR_4_5,
         ! getNocrc(LMIC.rps),
         osticks2us(LMIC.lbt_ticks),
         LMIC.lbt_dbmax,
-        ceppk / 10, ceppk % 10, LMIC.client.clockError
+        ceppk / 10, ceppk % 10, LMIC.client.clockError,
+        LMIC.rxsyms
         );
     }
 
@@ -198,6 +207,7 @@ bool cTest::txTest(
         this->m_Tx.fIdle = true;
         this->m_Tx.fContinuous = this->m_Tx.Count == 0;
         this->m_Tx.Tnext = os_getTime();
+        this->m_Tx.DigOut.setOutput(this->m_params.TxDigOut, true);
 
         gCatena.SafePrintf("Start TX test: %u bytes, ", this->m_Tx.nData);
 
@@ -205,6 +215,11 @@ bool cTest::txTest(
             gCatena.SafePrintf("continous");
         else
             gCatena.SafePrintf("%u packets", this->m_Tx.Count);
+
+        if (this->m_Tx.DigOut.isEnabled())
+            {
+            gCatena.SafePrintf(" pulsing digital I/O %d", this->m_params.TxDigOut);
+            }
 
         // setup LMIC and print settings
         gCatena.SafePrintf(". ");
@@ -276,6 +291,7 @@ bool cTest::rxTest(
         this->m_Rx.fTimedOut = false;
         this->m_Rx.Count = 0;
         this->m_Rx.fReceiving = false;
+        this->m_Rx.DigOut.setOutput(this->m_params.RxDigOut, true);
 
         gCatena.SafePrintf("Start RX test: capturing raw downlink ");
         if (m_Rx.fContinuous)
@@ -283,6 +299,11 @@ bool cTest::rxTest(
         else
             gCatena.SafePrintf("for %u milliseconds", this->m_params.RxTimeout);
 
+        if (this->m_Rx.DigOut.isEnabled())
+            {
+            gCatena.SafePrintf(" pulsing digital I/O %d", this->m_params.RxDigOut);
+            }
+            
         gCatena.SafePrintf(
             ".\n"
             "At RWC5020, select NST>Signal Generator, then Run.\n"
@@ -294,6 +315,7 @@ bool cTest::rxTest(
         // if there's a timeout, start it.
         if (! m_Rx.fContinuous)
             {
+            // when a timeout happens, this function is called.
             auto const timeoutFn = [](osjob_t *job)
                 {
                 os_radio(RADIO_RST);
@@ -367,6 +389,31 @@ void cTest::evStopTest()
     this->m_fsm.eval();
     }
 
+bool cTest::handleLmicEvent(const char *pMessage)
+    {
+    if (pMessage == nullptr)
+        return false;
+
+    if (pMessage[0] == '*')
+        {
+        // turn off GPIOs
+        this->m_Rx.DigOut.off();
+        this->m_Tx.DigOut.off();
+        return true;
+        }
+    else if (pMessage[0] == '+')
+        {
+        if (pMessage[1] == 'R')
+            this->m_Rx.DigOut.on();
+        else if (pMessage[1] == 'T')
+            this->m_Tx.DigOut.on();
+
+        return true;
+        }
+    else
+        return false;
+    }
+
 bool cTest::getParam(const char *pKey, char *pBuf, size_t nBuf) const
     {
     for (auto &p : cTest::ParamInfo)
@@ -384,6 +431,10 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     switch (key)
         {
+    case ParamKey::RxSyms:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.RxSyms);
+        break;
+
     case ParamKey::RxTimeout:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.RxTimeout);
         break;
@@ -406,7 +457,7 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::ClockError:
         {
-        unsigned ceppk = std::abs(this->m_params.ClockError * 10) + 0.5;
+        unsigned ceppk = (std::abs)(this->m_params.ClockError * 10) + 0.5;
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u.%u%%", ceppk / 10, ceppk % 10);
         }
         break;
@@ -432,6 +483,14 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::TxPower:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.TxPower);
+        break;
+
+    case ParamKey::RxDigOut:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.RxDigOut);
+        break;
+
+    case ParamKey::TxDigOut:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.TxDigOut);
         break;
 
     default:
@@ -463,6 +522,26 @@ static bool parseUnsigned(const char *pValue, size_t nValue, std::uint32_t &resu
     bool fResult = McciAdkLib_BufferToUint32(pValue, nValue, 10, &nonce, &fOverflow) == nValue && fOverflow == false;
     if (fResult)
         result = nonce;
+    return fResult;
+    }
+
+static bool parseUnsigned16(const char *pValue, size_t nValue, std::uint16_t &result)
+    {
+    if (nValue == 0)
+        return false;
+
+    bool fOverflow = false;
+    unsigned long nonce;
+    bool fResult = McciAdkLib_BufferToUlong(pValue, nValue, 10, &nonce, &fOverflow) == nValue && fOverflow == false;
+    if (fResult)
+        {
+        if (nonce > UINT16_MAX)
+            {
+            nonce = UINT16_MAX;
+            fOverflow = true;
+            }
+        result = std::uint16_t(nonce);
+        }
     return fResult;
     }
 
@@ -521,6 +600,10 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
 
     switch (key)
         {
+    case ParamKey::RxSyms:
+        fResult = parseUnsigned16(pValue, nValue, this->m_params.RxSyms);
+        break;
+
     case ParamKey::RxTimeout:
         fResult = parseUnsigned(pValue, nValue, this->m_params.RxTimeout);
         break;
@@ -662,6 +745,14 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
 
     case ParamKey::TxPower:
         fResult = parse_int8(pValue, nValue, this->m_params.TxPower);
+        break;
+
+    case ParamKey::RxDigOut:
+        fResult = parse_int8(pValue, nValue, this->m_params.RxDigOut);
+        break;
+
+    case ParamKey::TxDigOut:
+        fResult = parse_int8(pValue, nValue, this->m_params.RxDigOut);
         break;
 
     default:

@@ -15,6 +15,7 @@ Author:
 
 #include "rwc_nst_test.h"
 #include "rwc_nst_test_cmd.h"
+#include "rwc_nst_test_lmiclog.h"
 #include <lmic.h>
 #include <hal/hal.h>
 #include <arduino_lmic_hal_boards.h>
@@ -69,6 +70,7 @@ SPIClass gSPI2(
     );
 Catena_Mx25v8035f gFlash;
 cTest gTest;
+cEventQueue eventQueue;
 
 /****************************************************************************\
 |
@@ -176,6 +178,10 @@ void setup_lmic()
             }
         }
 
+    if (! eventQueue.kLmicLoggingEnabled)
+        Serial.println(F("**Warning: LMIC logging not enabled: GPIO toggling ineffective. Add LMIC_ENABLE_event_logging=1 to config.**"));
+
+    eventQueue.begin();
     os_init_ex(pPinMap);
     }
 
