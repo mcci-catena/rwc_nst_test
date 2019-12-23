@@ -39,9 +39,11 @@ static const cCommandStream::cEntry sMyExtraCommmands[] =
         {
         { "tx", cmdTxTest },
         { "rx", cmdRxTest },
+        { "rw", cmdRxWindowTest },
         { "count", cmdRxCount },
         { "param", cmdParam },
         { "log", cmdLog },
+        { "q", cmdQuit },
         // { "debugmask", cmdDebugMask },
         // other commands go here....
         };

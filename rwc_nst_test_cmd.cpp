@@ -78,9 +78,9 @@ Function:
     Command dispatcher for "rx" command.
 
 Definition:
-    McciCatena::cCommandStream::CommandFn cmdTxTest;
+    McciCatena::cCommandStream::CommandFn cmdRxTest;
 
-    McciCatena::cCommandStream::CommandStatus cmdTxTest(
+    McciCatena::cCommandStream::CommandStatus cmdRxTest(
         cCommandStream *pThis,
         void *pContext,
         int argc,
@@ -88,7 +88,7 @@ Definition:
         );
 
 Description:
-    The "rx" command takes no arguments. It starts a transmit
+    The "rx" command takes no arguments. It starts a receive
     test.
 
 Returns:
@@ -111,6 +111,61 @@ cCommandStream::CommandStatus cmdRxTest(
         return cCommandStream::CommandStatus::kInvalidParameter;
 
     if (! gTest.evSendStartRx())
+        {
+        pThis->printf("busy\n");
+        return cCommandStream::CommandStatus::kError;
+        }
+
+    return cCommandStream::CommandStatus::kSuccess;
+    }
+
+/*
+
+Name:   ::cmdRxWindowTest()
+
+Function:
+    Command dispatcher for "rw" command.
+
+Definition:
+    McciCatena::cCommandStream::CommandFn cmdRxWindowTest;
+
+    McciCatena::cCommandStream::CommandStatus cmdRxWindowTest(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        );
+
+Description:
+    The "rw" command takes no arguments. It starts a receive window
+    test. The receive window test waits for a rising edge on a specified
+    digital line (param RxDigIn), and captures the os_getTime() value.
+    It then starts a single receive scheduled at `param RxWindow`, using
+    RxSyms and ClockError to simulate the LMIC's window. 
+
+    This process repeats (controlled by param RxCount), and counts of pulses
+    and successful receives are accumulated.
+
+Returns:
+    cCommandStream::CommandStatus::kSuccess if successful.
+    Some other value for failure.
+
+*/
+
+// argv[0] is the matched command name.
+
+cCommandStream::CommandStatus cmdRxWindowTest(
+    cCommandStream *pThis,
+    void *pContext,
+    int argc,
+    char **argv
+    )
+    {
+
+    if (argc != 1)
+        return cCommandStream::CommandStatus::kInvalidParameter;
+
+    if (! gTest.evSendStartRxWindow())
         {
         pThis->printf("busy\n");
         return cCommandStream::CommandStatus::kError;
@@ -301,4 +356,48 @@ cCommandStream::CommandStatus cmdLog(
             }
         return cCommandStream::CommandStatus::kInvalidParameter;
         }
+    }
+
+/*
+
+Name:   ::cmdQuit()
+
+Function:
+    Command dispatcher for "q" command.
+
+Definition:
+    McciCatena::cCommandStream::CommandFn cmdQuit;
+
+    McciCatena::cCommandStream::CommandStatus cmdQuit(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        );
+
+Description:
+    The "q" command takes no arguments. It just stops the current test.
+
+Returns:
+    cCommandStream::CommandStatus::kSuccess if successful.
+    Some other value for failure.
+
+*/
+
+// argv[0] is the matched command name.
+
+cCommandStream::CommandStatus cmdQuit(
+    cCommandStream *pThis,
+    void *pContext,
+    int argc,
+    char **argv
+    )
+    {
+
+    if (argc != 1)
+        return cCommandStream::CommandStatus::kInvalidParameter;
+
+    gTest.evStopTest();
+
+    return cCommandStream::CommandStatus::kSuccess;
     }

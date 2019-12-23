@@ -22,8 +22,11 @@ Author:
 
 McciCatena::cCommandStream::CommandFn cmdTxTest;
 McciCatena::cCommandStream::CommandFn cmdRxTest;
+McciCatena::cCommandStream::CommandFn cmdRxWindowTest;
 McciCatena::cCommandStream::CommandFn cmdRxCount;
 McciCatena::cCommandStream::CommandFn cmdParam;
 McciCatena::cCommandStream::CommandFn cmdLog;
+McciCatena::cCommandStream::CommandFn cmdQuit;
+
 
 #endif // !defined(_rwc_nst_test_cmd_h_)
