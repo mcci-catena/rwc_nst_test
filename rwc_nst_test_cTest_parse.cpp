@@ -49,7 +49,7 @@ bool cTest::getParam(const char *pKey, char *pBuf, size_t nBuf) const
         if (strcasecmp(pKey, p.getName()) == 0)
             return cTest::getParamByKey(p.getKey(), pBuf, nBuf);
         }
-    
+
     return false;
     }
 
@@ -97,15 +97,15 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
     case ParamKey::WindowStart:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%ld", (long)this->m_params.WindowStart);
         break;
-        
+
     case ParamKey::WindowStop:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%ld", (long)this->m_params.WindowStop);
         break;
-        
+
     case ParamKey::WindowStep:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%ld", (long)this->m_params.WindowStep);
         break;
-        
+
     case ParamKey::CodingRate:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "4/%u", this->m_params.CodingRate + 5 - CR_4_5);
         break;
@@ -149,14 +149,14 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
     return fResult;
     }
 
-bool cTest::setParam(const char *pKey, const char *pValue) 
+bool cTest::setParam(const char *pKey, const char *pValue)
     {
     for (auto &p : cTest::ParamInfo)
         {
         if (strcasecmp(pKey, p.getName()) == 0)
             return cTest::setParamByKey(p.getKey(), pValue);
         }
-    
+
     return false;
     }
 
@@ -194,9 +194,9 @@ static bool parseUnsigned16(const char *pValue, size_t nValue, std::uint16_t &re
     }
 
 static bool parseUnsignedPartial(
-    const char *pValue, 
-    size_t nValue, 
-    std::uint32_t &result, 
+    const char *pValue,
+    size_t nValue,
+    std::uint32_t &result,
     size_t &nParsed
     )
     {
@@ -209,14 +209,14 @@ static bool parseUnsignedPartial(
     }
 
 static bool parse_int8(
-    const char *pValue, 
-    size_t nValue, 
+    const char *pValue,
+    size_t nValue,
     std::int8_t &result
     )
     {
     std::uint32_t nonce;
     bool fMinus;
-    
+
     fMinus = false;
     if (nValue > 0 && pValue[0] == '-')
         {
@@ -242,14 +242,14 @@ static bool parse_int8(
     }
 
 static bool parse_int32(
-    const char *pValue, 
-    size_t nValue, 
+    const char *pValue,
+    size_t nValue,
     std::int32_t &result
     )
     {
     std::uint32_t nonce;
     bool fMinus;
-    
+
     fMinus = false;
     if (nValue > 0 && pValue[0] == '-')
         {
@@ -330,7 +330,7 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
             {
             clockError = nonce;
             }
-    
+
         if (fResult && nParsed < nValue && pValue[nParsed] == '.')
             {
             // scan the fraction.

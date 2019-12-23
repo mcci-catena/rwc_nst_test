@@ -159,7 +159,7 @@ void cTest::setupLMIC(const cTest::Params &params)
     else
         {
         gCatena.SafePrintf(
-            "LoRa SF%u, BW%u", 
+            "LoRa SF%u, BW%u",
             getSf(LMIC.rps) + 6,
             125 << getBw(LMIC.rps)
             );
@@ -197,7 +197,7 @@ bool cTest::txTest(
         this->m_Tx.fIdle = true;
         this->m_Tx.fContinuous = this->m_Tx.Count == 0;
         this->m_Tx.Tnext = os_getTime();
-        this->m_Tx.DigOut.setOutput(this->m_params.TxDigOut, true);
+        this->m_TxDigOut.setOutput(this->m_params.TxDigOut, true);
 
         gCatena.SafePrintf("Start TX test: %u bytes, ", this->m_Tx.nData);
 
@@ -206,7 +206,7 @@ bool cTest::txTest(
         else
             gCatena.SafePrintf("%u packets", this->m_Tx.Count);
 
-        if (this->m_Tx.DigOut.isEnabled())
+        if (this->m_TxDigOut.isEnabled())
             {
             gCatena.SafePrintf(" pulsing digital I/O %d", this->m_params.TxDigOut);
             }
@@ -249,12 +249,12 @@ bool cTest::txTest(
 
         if (! this->m_Tx.fContinuous)
             --this->m_Tx.Count;
-    
+
         // give radio time to responsd to reset
         digitalWrite(LED_BUILTIN, 1);
         delay(1);
         digitalWrite(LED_BUILTIN, 0);
-    
+
         // load up the buffer.
         memcpy(LMIC.frame, this->m_Tx.Data, this->m_Tx.nData);
         LMIC.dataLen = this->m_Tx.nData;
@@ -281,7 +281,7 @@ bool cTest::rxTest(
         this->m_Rx.fTimedOut = false;
         this->m_Rx.Count = 0;
         this->m_Rx.fReceiving = false;
-        this->m_Rx.DigOut.setOutput(this->m_params.RxDigOut, true);
+        this->m_RxDigOut.setOutput(this->m_params.RxDigOut, true);
 
         gCatena.SafePrintf("Start RX test: capturing raw downlink ");
         if (m_Rx.fContinuous)
@@ -289,11 +289,11 @@ bool cTest::rxTest(
         else
             gCatena.SafePrintf("for %u milliseconds", this->m_params.RxTimeout);
 
-        if (this->m_Rx.DigOut.isEnabled())
+        if (this->m_RxDigOut.isEnabled())
             {
             gCatena.SafePrintf(" pulsing digital I/O %d", this->m_params.RxDigOut);
             }
-            
+
         gCatena.SafePrintf(
             ".\n"
             "At RWC5020, select NST>Signal Generator, then Run.\n"
@@ -384,7 +384,7 @@ void cTest::evStopTest()
 // The receive window test waits for a rising edge on a specified
 // digital line (param RxDigIn), and captures the os_getTime() value.
 // It then starts a single receive scheduled at `param RxWindow`, using
-// RxSyms and ClockError to simulate the LMIC's window. 
+// RxSyms and ClockError to simulate the LMIC's window.
 // This process repeats (controlled by param RxCount), and counts of pulses
 // and successful receives are accumulated.
 bool cTest::rxWindowTest(
@@ -399,9 +399,9 @@ bool cTest::rxWindowTest(
 
         gCatena.SafePrintf(
             "Start RX Window test: vary window from %ld to %ld us in %ld us steps, %u tries each step\n",
-            this->m_RwTest.WindowStart,
-            this->m_RwTest.WindowStop,
-            this->m_RwTest.WindowStep,
+            (long) osticks2us(this->m_RwTest.WindowStart),
+            (long) osticks2us(this->m_RwTest.WindowStop),
+            (long) osticks2us(this->m_RwTest.WindowStep),
             this->m_RwTest.Count
             );
 
@@ -409,11 +409,11 @@ bool cTest::rxWindowTest(
             "Rx triggered by digital input %d",
             this->m_params.RxDigIn
             );
-        if (this->m_Rx.DigOut.isEnabled())
+        if (this->m_RxDigOut.isEnabled())
             {
             gCatena.SafePrintf(", pulsing digital I/O %d", this->m_params.RxDigOut);
             }
-            
+
         gCatena.SafePrintf(
             ".\n"
             "Set up second Catena and start tx loop. Use 'count' or 'q' to quit\n"
@@ -432,15 +432,26 @@ bool cTest::RwTest_t::begin(cTest &Test)
     this->WindowStart = us2osticks(Test.m_params.WindowStart);
     this->WindowStop = us2osticks(Test.m_params.WindowStop);
     this->WindowStep = us2osticks(Test.m_params.WindowStep);
+    if (this->WindowStart <= 0 || this->WindowStop <= 0)
+        {
+        gCatena.SafePrintf("** please specify positive, non-zero param Window.Start and Window.Stop **\n");
+        return false;
+        }
+    if (this->WindowStep == 0)
+        {
+        gCatena.SafePrintf("** please specify a non-zero param Window.Step **\n");
+        return false;
+        }
     this->DigIn.setInput(Test.m_params.RxDigIn, true);
     if (! this->DigIn.isEnabled())
         {
         gCatena.SafePrintf("** please set param Rx.DigIn to rx trigger input **\n");
         return false;
         }
-    this->DigOut.setOutput(Test.m_params.RxDigOut, true);
+    Test.m_RxDigOut.setOutput(Test.m_params.RxDigOut, true);
 
     this->Fsm.init(*this, &RwTest_t::fsmDispatch);
+    this->Fsm.eval();
 
     return true;
     }
@@ -466,10 +477,50 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
         {
     case State::stInitial:
         this->fRunning = true;
-        newState = State::stWaitForTrigger;
         this->Window = this->WindowStart;
+        this->pTest->setupLMIC(this->pTest->m_params);
+
+        newState = State::stInitWindow;
         break;
-    
+
+    case State::stInitWindow:
+        if (fEntry)
+            {
+            // calculate the time we'll use for the window. We have to
+            // first calculate the half-symbol time.  If bandwidth is 125*2^bw,
+            // and sf is 7..12, then hs (usec) is 128 << (sf-5-bw).
+            auto const sf = getSf(LMIC.rps);
+            ostime_t hsym;
+
+            if (sf == FSK)
+                hsym = us2osticksRound(80);
+            else
+                hsym = us2osticksRound(
+                                128 << ((sf - SF7 + 7) -
+                                        this->pTest->m_params.Bandwidth - 5)
+                                );
+
+            this->WindowAdjust =
+                LMICcore_adjustForDrift(
+                    this->Window +
+                        LMICcore_RxWindowOffset(hsym, LMICbandplan_MINRX_SYMS_LoRa_ClassA),
+                    hsym
+                    );
+
+            gCatena.SafePrintf(
+                "Window %ld us: adjusted %ld us, hsym %ld (%ld us) rxsyms %u (%ld us)\n",
+                (long)osticks2us(this->Window),
+                (long)osticks2us(this->WindowAdjust),
+                (long)hsym,
+                (long)osticks2us(hsym),
+                LMIC.rxsyms,
+                (long)osticks2us(LMIC.rxsyms * hsym * 2)
+                );
+            }
+
+        newState = State::stWaitForTrigger;
+        break;
+
     case State::stWaitForTrigger:
         if (fEntry)
             {
@@ -485,26 +536,13 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
     case State::stWaitForWindow:
         if (fEntry)
             {
-            this->pTest->setupLMIC(this->pTest->m_params);
-    
-            // calculate the time we'll use for the window. We have to
-            // first calculate the half-symbol time.  If bandwidth is 125*2^bw,
-            // and sf is 7..12, then hs (usec) is 128 << (sf-5-bw).
-            ostime_t hsym = us2osticksRound(
-                                128 << (this->pTest->m_params.SpreadingFactor -
-                                        this->pTest->m_params.Bandwidth - 5)
-                                );
-            LMIC.rxtime = this->tEdge + LMICcore_adjustForDrift(
-                                            this->Window + 
-                                                LMICcore_RxWindowOffset(hsym, LMICbandplan_MINRX_SYMS_LoRa_ClassA), 
-                                            hsym
-                                            );
+            LMIC.rxtime = this->tEdge + this->WindowAdjust;
             }
 
         if (this->pTest->m_fStopTest)
             newState = State::stFinal;
         else if (os_getTime() - (LMIC.rxtime - RX_RAMPUP) > 0)
-            newState = State::stRxWindow;        
+            newState = State::stRxWindow;
         break;
 
     case State::stRxWindow:
@@ -516,7 +554,7 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
                     {
                     gTest.m_RwTest.fRxComplete = true;
                     };
-            
+
             // start the transmit
             this->fRxComplete = false;
             os_radio(RADIO_RX);
@@ -531,7 +569,7 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
         else if (this->fRxComplete)
             newState = State::stRxEval;
         break;
-    
+
     case State::stRxEval:
         if (fEntry)
             {
@@ -542,13 +580,18 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
             if (LMIC.dataLen != 0)
                 {
                 ++this->nGood;
+                gCatena.SafePrintf("+");
+                }
+            else
+                {
+                gCatena.SafePrintf("-");
                 }
             fDone = false;
             if (this->nTries >= this->Count)
                 {
                 // print
-                gCatena.SafePrintf("window %6u: received %u/%u\n",
-                    this->Window,
+                gCatena.SafePrintf("\nwindow %6u: received %u/%u\n",
+                    osticks2us(this->Window),
                     this->nGood,
                     this->nTries
                     );
@@ -567,14 +610,15 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
                     fDone = (this->Window > this->WindowStop);
                 else
                     fDone = (this->Window < this->WindowStop);
+
+                // Do the appropriate state transition.
+                if (fDone)
+                    newState = State::stFinal;
+                else
+                    newState = State::stInitWindow;
                 }
 
-            // if done, do the appropraite state transition.
-            if (fDone)
-                {
-                newState = State::stFinal;
-                }
-            // otherwise, start next receive.
+            // otherwise, start next receive using current window.
             else
                 newState = State::stWaitForTrigger;
             }
@@ -588,6 +632,8 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
         if (fEntry)
             {
             this->fRunning = false;
+            this->nGoodTotal += this->nGoodTotal;
+            this->nTriesTotal += this->nTries;
             gCatena.SafePrintf("total: received %u/%u\n",
                 this->nGoodTotal,
                 this->nTriesTotal
@@ -607,16 +653,16 @@ bool cTest::handleLmicEvent(const char *pMessage)
     if (pMessage[0] == '*')
         {
         // turn off GPIOs
-        this->m_Rx.DigOut.off();
-        this->m_Tx.DigOut.off();
+        this->m_RxDigOut.off();
+        this->m_TxDigOut.off();
         return true;
         }
     else if (pMessage[0] == '+')
         {
         if (pMessage[1] == 'R')
-            this->m_Rx.DigOut.on();
+            this->m_RxDigOut.on();
         else if (pMessage[1] == 'T')
-            this->m_Tx.DigOut.on();
+            this->m_TxDigOut.on();
 
         return true;
         }

@@ -42,8 +42,8 @@ private:
     static constexpr float kDefaultClockError               = 0.0;  // 0 percent, no error
     static constexpr std::uint32_t kRxCountDefault          = 10;
     static constexpr ostime_t kWindowStartDefault            = 990 * 1000;
-    static constexpr ostime_t kWindowStopDefault             = 1100 * 1000;
-    static constexpr ostime_t kWindowStepDefault             = 0;
+    static constexpr ostime_t kWindowStopDefault             = 1010 * 1000;
+    static constexpr ostime_t kWindowStepDefault             = 10 * 1000;
     static constexpr std::uint16_t kRxSymsDefault           = 6;
     static constexpr cr_t kDefaultCodingRate                = CR_4_5;
     static constexpr sf_t kDefaultSpreadingFactor           = SF7;
@@ -119,7 +119,7 @@ public:
         const char *getName() const { return this->m_name; }
         const char *getHelp() const { return this->m_help; }
         };
-        
+
     static const ParamInfo_t ParamInfo[unsigned(ParamKey::Max)];
 
     enum DebugFlags : std::uint32_t
@@ -131,9 +131,9 @@ public:
         };
 
 private:
-    static constexpr Params kDefaultParams() 
+    static constexpr Params kDefaultParams()
         {
-        return Params 
+        return Params
             {
             .RxTimeout = kRxTimeoutMsDefault,
             .TxInterval = kTxIntervalMsDefault,
@@ -300,7 +300,7 @@ public:
             return true;
 #else
             return false;
-#endif            
+#endif
             }
 
     private:
@@ -410,6 +410,9 @@ private:
     bool        m_fExit: 1;
     bool        m_fStopTest: 1;
 
+    cDigOut     m_TxDigOut;
+    cDigOut     m_RxDigOut;
+
     struct Tx_t
         {
         // transmission down-counter.
@@ -420,7 +423,6 @@ private:
         bool        fIdle: 1;
         std::uint8_t nData;
         std::uint8_t Data[255];
-        cDigOut     DigOut;
         };
 
     Tx_t        m_Tx;
@@ -432,7 +434,6 @@ private:
         bool        fContinuous: 1;
         bool        fTimedOut: 1;
         bool        fReceiving: 1;
-        cDigOut     DigOut;
         osjob_t     TimeoutJob;
         };
 
@@ -448,7 +449,10 @@ private:
 
         // the edge time
         ostime_t    tEdge;
-    
+
+        // the adjusted window
+        ostime_t    WindowAdjust;
+
         // the current window
         ostime_t    Window;
 
@@ -479,9 +483,6 @@ private:
         // the digital input
         cDigIn      DigIn;
 
-        // the digital output
-        cDigOut     DigOut;
-
         // input symbols
         rxsyms_t    RxSymsIn;
 
@@ -499,6 +500,7 @@ private:
             {
             stNoChange = 0, // this name must be present: indicates "no change of state"
             stInitial,      // this name must be present: it's the starting state.
+            stInitWindow,       // set up the receive window.
             stWaitForTrigger,   // Waiting for a trigger
             stWaitForWindow,    // Waiting to start the window
             stRxWindow,         // Window open
@@ -515,7 +517,7 @@ private:
         // called to initialize the test. false means
         // couldn't start test.
         bool begin(cTest &Test);
-    
+
         // called to advance the test; true when done.
         bool poll();
         };
