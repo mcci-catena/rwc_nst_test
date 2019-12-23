@@ -752,7 +752,7 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
         break;
 
     case ParamKey::TxDigOut:
-        fResult = parse_int8(pValue, nValue, this->m_params.RxDigOut);
+        fResult = parse_int8(pValue, nValue, this->m_params.TxDigOut);
         break;
 
     default:

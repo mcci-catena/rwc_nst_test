@@ -22,14 +22,14 @@ Author:
 
 void LMICOS_logEvent(const char *pMessage)
     {
-    if (! gTest.handleLmicEvent(pMessage))
-        eventQueue.putEvent(ev_t(-1), pMessage);
+    gTest.handleLmicEvent(pMessage);
+    eventQueue.putEvent(ev_t(-1), pMessage);
     }
 
 void LMICOS_logEventUint32(const char *pMessage, uint32_t datum)
     {
-    if (! gTest.handleLmicEvent(pMessage))
-        eventQueue.putEvent(ev_t(-2), pMessage, datum);
+    gTest.handleLmicEvent(pMessage);
+    eventQueue.putEvent(ev_t(-2), pMessage, datum);
     }
 
 #endif // LMIC_ENABLE_event_logging
@@ -58,19 +58,19 @@ const char *cEventQueue::eventnode_t::getSfName() const
     return t[getSf(this->rps)];
     }
 
-const char *cEventQueue::eventnode_t::getBwName() const 
+const char *cEventQueue::eventnode_t::getBwName() const
     {
     const char * const t[] = { "BW125", "BW250", "BW500", "BWrfu" };
     return t[getBw(this->rps)];
     }
 
-const char *cEventQueue::eventnode_t::getCrName() const 
+const char *cEventQueue::eventnode_t::getCrName() const
     {
     const char * const t[] = { "CR 4/5", "CR 4/6", "CR 4/7", "CR 4/8" };
     return t[getCr(this->rps)];
     }
 
-const char *cEventQueue::eventnode_t::getCrcName() const 
+const char *cEventQueue::eventnode_t::getCrcName() const
     {
     return getNocrc(this->rps) ? "NoCrc" : "Crc";
     }
@@ -127,21 +127,21 @@ void cEventQueue::eventnode_t::printSaveIrqFlags() const
     gCatena.SafePrintf(", saveIrqFlags 0x%02x", this->saveIrqFlags);
     }
 
-void cEventQueue::eventnode_t::printFcnts() const 
+void cEventQueue::eventnode_t::printFcnts() const
     {
     gCatena.SafePrintf(", FcntUp=%04x, FcntDn=%04x", this->fcntUp, this->fcntDn);
     }
 
 // dump all the registers.
-void cEventQueue::eventnode_t::printAllRegisters(void) const 
+void cEventQueue::printAllRegisters(void)
     {
     uint8_t regbuf[0x80];
     regbuf[0] = 0;
     hal_spi_read(1, regbuf + 1, sizeof(regbuf) - 1);
 
-    for (unsigned i = 0; i < sizeof(regbuf); ++i) 
+    for (unsigned i = 0; i < sizeof(regbuf); ++i)
         {
-        if (i % 16 == 0) 
+        if (i % 16 == 0)
             {
             gCatena.SafePrintf("\n%02x", i);
             }
@@ -172,7 +172,7 @@ void cEventQueue::eventnode_t::print() const
         long(osticks2ms(this->time))
         );
 
-    if (ev == ev_t(-1) || ev == ev_t(-2)) 
+    if (ev == ev_t(-1) || ev == ev_t(-2))
         {
         gCatena.SafePrintf("%s", this->pMessage);
         if (ev == ev_t(-2))
@@ -180,7 +180,7 @@ void cEventQueue::eventnode_t::print() const
             gCatena.SafePrintf(", datum=0x%lx", (unsigned long)(this->datum));
             }
         this->printOpmode('.');
-        } 
+        }
     else if (ev == ev_t(-3))
         {
         gCatena.SafePrintf("%s, line %lu", this->pMessage, (unsigned long)(this->datum));
@@ -192,18 +192,18 @@ void cEventQueue::eventnode_t::print() const
         this->printTxrxflags();
         this->printSaveIrqFlags();
         this->printAllRegisters();
-        } 
-    else 
+        }
+    else
         {
         static const char evNames[] = LMIC_EVENT_NAME_MULTISZ__INIT;
-    
+
         auto const pName = McciAdkLib_MultiSzIndex(evNames, ev);
 
         if (pName[0] != '\0')
             {
             gCatena.SafePrintf("%s", pName);
-            } 
-        else 
+            }
+        else
             {
             gCatena.SafePrintf("Unknown event: %u", unsigned(ev));
             }
@@ -241,7 +241,7 @@ void cEventQueue::eventnode_t::print() const
                         );
                     }
                 gCatena.SafePrintf("\nappSKey: ");
-                for (size_t i=0; i<sizeof(appSKey); ++i) 
+                for (size_t i=0; i<sizeof(appSKey); ++i)
                     {
                     gCatena.SafePrintf("%s%02x",
                         i != 0 ? "-" : "",
@@ -327,6 +327,6 @@ void cEventQueue::eventnode_t::print() const
             break;
             } // end case
         }
- 
+
     gCatena.SafePrintf("\n");
     }

@@ -16,6 +16,7 @@ Author:
 #include "rwc_nst_test_cmd.h"
 
 #include "rwc_nst_test.h"
+#include "rwc_nst_test_lmiclog.h"
 #include <strings.h>
 
 using namespace McciCatena;
@@ -68,7 +69,7 @@ cCommandStream::CommandStatus cmdTxTest(
 
     return cCommandStream::CommandStatus::kSuccess;
     }
-    
+
 /*
 
 Name:   ::cmdRxTest()
@@ -216,7 +217,7 @@ cCommandStream::CommandStatus cmdParam(
                 pThis->printf("%s: %s\n", p.getName(), buf);
             }
         break;
-    
+
     case 2:
         {
         char buf[64];
@@ -243,4 +244,61 @@ cCommandStream::CommandStatus cmdParam(
         }
 
     return cCommandStream::CommandStatus::kSuccess;
+    }
+
+/*
+
+Name:   ::cmdLog()
+
+Function:
+    Command dispatcher for "log" command.
+
+Definition:
+    McciCatena::cCommandStream::CommandFn cmdLog;
+
+    McciCatena::cCommandStream::CommandStatus cmdLog(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        );
+
+Description:
+    The "log" command has one form
+
+    1. "log" by itself dumps the log.
+    2. "log registers" displays the current radio registers.
+
+Returns:
+    cCommandStream::CommandStatus::kSuccess if successful.
+    Some other value for failure.
+
+*/
+
+// argv[0] is the matched command name.
+cCommandStream::CommandStatus cmdLog(
+    cCommandStream *pThis,
+    void *pContext,
+    int argc,
+    char **argv
+    )
+    {
+    switch (argc)
+        {
+    default:
+        return cCommandStream::CommandStatus::kInvalidParameter;
+
+    case 1:
+        eventQueue.printAll();
+        return cCommandStream::CommandStatus::kSuccess;
+
+    case 2:
+        if (strcasecmp(argv[1], "registers") == 0)
+            {
+            eventQueue.printAllRegisters();
+            pThis->printf("\n");
+            return cCommandStream::CommandStatus::kSuccess;
+            }
+        return cCommandStream::CommandStatus::kInvalidParameter;
+        }
     }

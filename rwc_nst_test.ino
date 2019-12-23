@@ -41,6 +41,7 @@ static const cCommandStream::cEntry sMyExtraCommmands[] =
         { "rx", cmdRxTest },
         { "count", cmdRxCount },
         { "param", cmdParam },
+        { "log", cmdLog },
         // { "debugmask", cmdDebugMask },
         // other commands go here....
         };

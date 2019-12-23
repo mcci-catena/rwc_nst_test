@@ -19,6 +19,7 @@ Author:
 #pragma once
 
 #include <arduino_lmic.h>
+#include <Catena_CommandStream.h>
 
 #if LMIC_ENABLE_event_logging
 extern "C" {
@@ -77,7 +78,10 @@ public:
         void printTxrxflags() const;
         void printSaveIrqFlags() const;
         void printFcnts() const;
-        void printAllRegisters() const;
+        static void printAllRegisters()
+            {
+            cEventQueue::printAllRegisters();
+            }
     };
 
     bool getEvent(eventnode_t &node) {
@@ -143,6 +147,9 @@ public:
             return false;
             }
         }
+
+    // print all registers.
+    static void printAllRegisters();
 
     // set things up.
     void begin();

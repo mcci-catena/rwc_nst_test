@@ -24,5 +24,6 @@ McciCatena::cCommandStream::CommandFn cmdTxTest;
 McciCatena::cCommandStream::CommandFn cmdRxTest;
 McciCatena::cCommandStream::CommandFn cmdRxCount;
 McciCatena::cCommandStream::CommandFn cmdParam;
+McciCatena::cCommandStream::CommandFn cmdLog;
 
 #endif // !defined(_rwc_nst_test_cmd_h_)
