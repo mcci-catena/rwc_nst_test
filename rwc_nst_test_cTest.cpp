@@ -605,7 +605,7 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
                     );
 
                 // accumulate stats
-                this->nGoodTotal += this->nGoodTotal;
+                this->nGoodTotal += this->nGood;
                 this->nTriesTotal += this->nTries;
 
                 this->nGood = this->nTries = 0;
@@ -640,7 +640,7 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
         if (fEntry)
             {
             this->fRunning = false;
-            this->nGoodTotal += this->nGoodTotal;
+            this->nGoodTotal += this->nGood;
             this->nTriesTotal += this->nTries;
             gCatena.SafePrintf("total: received %u/%u\n",
                 this->nGoodTotal,

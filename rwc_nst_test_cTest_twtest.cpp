@@ -160,7 +160,12 @@ cTest::TwTest_t::State cTest::TwTest_t::fsmDispatch(
 
             this->fTxComplete = false;
             LMIC.txend = this->tEdge + this->tDelay - this->tStartup;
-            os_radio(RADIO_TX_AT);
+
+#if ARDUINO_LMIC_VERSION >= ARDUINO_LMIC_VERSION_CALC(3,0,99,8)
+                os_radio(RADIO_TX_AT);
+#else
+                os_radio(RADIO_TX);
+#endif
             }
 
         if (this->pTest->m_fStopTest)
