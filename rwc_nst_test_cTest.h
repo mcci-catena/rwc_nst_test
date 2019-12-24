@@ -18,6 +18,8 @@ Author:
 
 #pragma once
 
+#include <Arduino.h>
+#include <cstdint>
 #include <Catena_PollableInterface.h>
 #include <Catena_FSM.h>
 #include <arduino_lmic.h>
@@ -36,14 +38,17 @@ class cTest : public McciCatena::cPollableObject
 private:
     static constexpr std::uint32_t kRxTimeoutMsDefault      = 5000;
     static constexpr std::uint32_t kTxIntervalMsDefault     = 2000;
+    static constexpr std::uint32_t kTxPulseMsDefault        = 100;
+    static constexpr std::uint32_t kTxGuardUsDefault        = 1000;
+    static constexpr std::uint32_t kTxStartUsDefault        = 50;
     static constexpr std::uint32_t kRxRssiIntervalUsDefault = 0;    // LBT disabled
     static constexpr unsigned kTxTestCountDefault           = 3;
     static constexpr std::uint32_t kDefaultFreq             = 902300000;
     static constexpr float kDefaultClockError               = 0.0;  // 0 percent, no error
     static constexpr std::uint32_t kRxCountDefault          = 10;
-    static constexpr ostime_t kWindowStartDefault            = 990 * 1000;
-    static constexpr ostime_t kWindowStopDefault             = 1010 * 1000;
-    static constexpr ostime_t kWindowStepDefault             = 10 * 1000;
+    static constexpr ostime_t kWindowStartDefault           = 990 * 1000;
+    static constexpr ostime_t kWindowStopDefault            = 1010 * 1000;
+    static constexpr ostime_t kWindowStepDefault            = 10 * 1000;
     static constexpr std::uint16_t kRxSymsDefault           = 6;
     static constexpr cr_t kDefaultCodingRate                = CR_4_5;
     static constexpr sf_t kDefaultSpreadingFactor           = SF7;
@@ -53,12 +58,16 @@ private:
     static constexpr std::int8_t kRxDigInDefault            = -1;
     static constexpr std::int8_t kRxDigOutDefault           = -1;
     static constexpr std::int8_t kTxDigOutDefault           = -1;
+    static constexpr std::int8_t kTxPulseOutDefault         = -1;
 
 public:
     struct Params
         {
         std::uint32_t   RxTimeout;
         std::uint32_t   TxInterval;
+        std::uint32_t   TxPulseMs;
+        std::uint32_t   TxGuardUs;
+        std::uint32_t   TxStartUs;
         std::uint32_t   RxRssiIntervalUs;
         std::uint32_t   TxTestCount;
         std::uint32_t   Freq;
@@ -76,12 +85,16 @@ public:
         std::int8_t     RxDigIn;
         std::int8_t     RxDigOut;
         std::int8_t     TxDigOut;
+        std::int8_t     TxPulseOut;
         };
 
     enum class ParamKey : std::uint8_t
         {
         RxTimeout,
         TxInterval,
+        TxPulseMs,
+        TxGuardUs,
+        TxStartUs,
         RxRssiIntervalUs,
         TxTestCount,
         Freq,
@@ -99,6 +112,7 @@ public:
         RxDigIn,
         RxDigOut,
         TxDigOut,
+        TxPulseOut,
         Max
         };
 
@@ -137,6 +151,9 @@ private:
             {
             .RxTimeout = kRxTimeoutMsDefault,
             .TxInterval = kTxIntervalMsDefault,
+            .TxPulseMs = kTxPulseMsDefault,
+            .TxGuardUs = kTxGuardUsDefault,
+            .TxStartUs = kTxStartUsDefault,
             .RxRssiIntervalUs = kRxRssiIntervalUsDefault,
             .TxTestCount = kTxTestCountDefault,
             .Freq = kDefaultFreq,
@@ -154,6 +171,7 @@ private:
             .RxDigIn = kRxDigInDefault,
             .RxDigOut = kRxDigOutDefault,
             .TxDigOut = kTxDigOutDefault,
+            .TxPulseOut = kTxPulseOutDefault,
             };
         };
 
@@ -175,6 +193,7 @@ public:
         stTxTest,       // running the Tx Test
         stRxTest,       // running the Rx test
         stRxWindowTest, // running the Rx window test
+        stTxWindowTest, // running the Tx window test
 
         stFinal,        // this name must be present, it's the terminal state.
         };
@@ -185,6 +204,7 @@ public:
         StartTx,     // request to start TX test
         StartRx,     // request to start RX test
         StartRxWindow, // request to start RX window test
+        StartTxWindow, // request to start TX window test
         };
 
     static constexpr const char *getStateName(State s)
@@ -197,6 +217,7 @@ public:
         case State::stTxTest:   return "stTxTest";
         case State::stRxTest:   return "stRxTest";
         case State::stRxWindowTest: return "stRxWindowTest";
+        case State::stTxWindowTest: return "stTxWindowTest";
         case State::stFinal:    return "stFinal";
         default:                return "<<unknown>>";
             }
@@ -216,6 +237,7 @@ public:
     bool evSendStartRx() { return this->evSendCommand(Command::StartRx); }
     bool evSendStartTx() { return this->evSendCommand(Command::StartTx); }
     bool evSendStartRxWindow() { return this->evSendCommand(Command::StartRxWindow); }
+    bool evSendStartTxWindow() { return this->evSendCommand(Command::StartTxWindow); }
 
     // request an operation
     bool evSendCommand(Command cmd)
@@ -390,6 +412,8 @@ private:
     void rxTestStop();
     // run a receive window test; return true when done
     bool rxWindowTest(bool fEntry);
+    // run a transmit window test; return true when done
+    bool txWindowTest(bool fEntry);
     // set up LMIC from Params
     void setupLMIC(const Params &params);
 
@@ -523,6 +547,71 @@ private:
         };
 
     RwTest_t    m_RwTest;
+
+    class TwTest_t
+        {
+    private:
+        // the container
+        cTest       *pTest;
+
+        // the length of the pulse
+        ostime_t    tPulse;
+        // the delay from leading edge of pulse to start TX
+        ostime_t    tDelay;
+        // the time of the rising edge of pulse.
+        ostime_t    tEdge;
+        // the guard band
+        ostime_t    tGuard;
+        // the calibration time
+        ostime_t    tStartup;
+
+        // the iteration counter
+        std::uint32_t   Count;
+
+        // true if running.
+        bool        fRunning : 1;
+        // true if continuous
+        bool        fContinuous : 1;
+        // true if TX is done
+        bool        fTxComplete : 1;
+
+        // the pulse for timing reference
+        cDigOut     PulseOut;
+
+        // FSM
+    private:
+        enum class State : std::uint8_t
+            {
+            stNoChange = 0, // this name must be present: indicates "no change of state"
+            stInitial,      // this name must be present: it's the starting state.
+            stPulse,        // set up the receive window.
+            stDelay,        // Waiting for a trigger
+            stTx,           // Waiting to start the window
+            stPostTx,       // Wait after a transmit.
+            stFinal,        // this name must be present, it's the terminal state.
+            };
+
+        McciCatena::cFSM<TwTest_t, State> Fsm;
+
+        // evaluate the control FSM.
+        State fsmDispatch(State currentState, bool fEntry);
+
+    public:
+        // called to initialize the test. false means
+        // couldn't start test.
+        bool begin(cTest &Test);
+
+        // called to advance the test; true when done.
+        bool poll();
+
+        // return true if this is a continuous test.
+        bool isContinuous() const
+            {
+            return this->fContinuous;
+            }
+        };
+
+    TwTest_t    m_TwTest;
     };
 
 #endif // _rwc_nst_test_cTest_h_

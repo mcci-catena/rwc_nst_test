@@ -33,14 +33,17 @@ const cTest::ParamInfo_t cTest::ParamInfo[] =
     { ParamKey::RxTimeout,          "RxTimeout",          "receive timeout (ms)" },
     { ParamKey::SpreadingFactor,    "SpreadingFactor",    "7-12 or FSK" },
     { ParamKey::TxDigOut,           "TxDigOut",           "digital output to pulse during TX (pin)" },
+    { ParamKey::TxGuardUs,          "TxGuardUs",          "transmit window guard time (usec)" },
     { ParamKey::TxInterval,         "TxInterval",         "transmit interval (ms)" },
     { ParamKey::TxPower,            "TxPower",            "transmit power (dB)" },
+    { ParamKey::TxPulseMs,          "TxPulseMs",          "transimt window pulse width (ms)" },
+    { ParamKey::TxPulseOut,         "TxPulseOut",         "digital output to pulse for timing of TX window (pin)" },
+    { ParamKey::TxStartUs,          "TxStartUs",          "transmit window startup calibration time (usec)" },
     { ParamKey::TxTestCount,        "TxTestCount",        "transmit test repeat count" },
     { ParamKey::WindowStart,        "Window.Start",       "receive window start (us)" },
     { ParamKey::WindowStep,         "Window.Step",        "receive window step (us)" },
     { ParamKey::WindowStop,         "Window.Stop",        "receive window stop (us)" },
     };
-
 
 bool cTest::getParam(const char *pKey, char *pBuf, size_t nBuf) const
     {
@@ -69,6 +72,18 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::TxInterval:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.TxInterval);
+        break;
+
+    case ParamKey::TxPulseMs:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.TxPulseMs);
+        break;
+
+    case ParamKey::TxGuardUs:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.TxGuardUs);
+        break;
+
+    case ParamKey::TxStartUs:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u", this->m_params.TxStartUs);
         break;
 
     case ParamKey::RxRssiIntervalUs:
@@ -139,6 +154,10 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::TxDigOut:
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.TxDigOut);
+        break;
+
+    case ParamKey::TxPulseOut:
+        McciAdkLib_Snprintf(pBuf, nBuf, 0, "%d", this->m_params.TxPulseOut);
         break;
 
     default:
@@ -291,6 +310,18 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
 
     case ParamKey::TxInterval:
         fResult = parseUnsigned(pValue, nValue, this->m_params.TxInterval);
+        break;
+
+    case ParamKey::TxPulseMs:
+        fResult = parseUnsigned(pValue, nValue, this->m_params.TxPulseMs);
+        break;
+
+    case ParamKey::TxGuardUs:
+        fResult = parseUnsigned(pValue, nValue, this->m_params.TxGuardUs);
+        break;
+
+    case ParamKey::TxStartUs:
+        fResult = parseUnsigned(pValue, nValue, this->m_params.TxStartUs);
         break;
 
     case ParamKey::RxRssiIntervalUs:
@@ -454,6 +485,10 @@ bool cTest::setParamByKey(cTest::ParamKey key, const char *pValue)
 
     case ParamKey::TxDigOut:
         fResult = parse_int8(pValue, nValue, this->m_params.TxDigOut);
+        break;
+
+    case ParamKey::TxPulseOut:
+        fResult = parse_int8(pValue, nValue, this->m_params.TxPulseOut);
         break;
 
     default:

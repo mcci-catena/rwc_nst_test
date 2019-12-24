@@ -28,35 +28,6 @@ using namespace McciCatena;
 |
 \****************************************************************************/
 
-/****************************************************************************\
-|
-|   User commands
-|
-\****************************************************************************/
-
-// the individual commmands are put in this table
-static const cCommandStream::cEntry sMyExtraCommmands[] =
-        {
-        { "tx", cmdTxTest },
-        { "rx", cmdRxTest },
-        { "rw", cmdRxWindowTest },
-        { "count", cmdRxCount },
-        { "param", cmdParam },
-        { "log", cmdLog },
-        { "q", cmdQuit },
-        // { "debugmask", cmdDebugMask },
-        // other commands go here....
-        };
-
-/* a top-level structure wraps the above and connects to the system table */
-/* it optionally includes a "first word" so you can for sure avoid name clashes */
-static cCommandStream::cDispatch
-sMyExtraCommands_top(
-        sMyExtraCommmands,          /* this is the pointer to the table */
-        sizeof(sMyExtraCommmands),  /* this is the size of the table */
-        nullptr                     /* this is no "first word" for all the commands in this table */
-        );
-
 
 /****************************************************************************\
 |
@@ -186,21 +157,6 @@ void setup_lmic()
 
     eventQueue.begin();
     os_init_ex(pPinMap);
-    }
-
-void setup_commands()
-    {
-    /* add our application-specific commands */
-    gCatena.addCommands(
-        /* name of app dispatch table, passed by reference */
-        sMyExtraCommands_top,
-        /*
-        || optionally a context pointer using static_cast<void *>().
-        || normally only libraries (needing to be reentrant) need
-        || to use the context pointer.
-        */
-        nullptr
-        );
     }
 
 void setup_test()

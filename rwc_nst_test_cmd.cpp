@@ -19,7 +19,79 @@ Author:
 #include "rwc_nst_test_lmiclog.h"
 #include <strings.h>
 
+McciCatena::cCommandStream::CommandFn cmdTxTest;
+McciCatena::cCommandStream::CommandFn cmdRxTest;
+McciCatena::cCommandStream::CommandFn cmdRxWindowTest;
+McciCatena::cCommandStream::CommandFn cmdRxCount;
+McciCatena::cCommandStream::CommandFn cmdParam;
+McciCatena::cCommandStream::CommandFn cmdLog;
+McciCatena::cCommandStream::CommandFn cmdQuit;
+McciCatena::cCommandStream::CommandFn cmdTxWindowTest;
+
 using namespace McciCatena;
+
+/****************************************************************************\
+|
+|   User commands
+|
+\****************************************************************************/
+
+// the individual commmands are put in this table
+static const cCommandStream::cEntry sMyExtraCommmands[] =
+        {
+        { "tx", cmdTxTest },
+        { "rx", cmdRxTest },
+        { "rw", cmdRxWindowTest },
+        { "tw", cmdTxWindowTest },
+        { "count", cmdRxCount },
+        { "param", cmdParam },
+        { "log", cmdLog },
+        { "q", cmdQuit },
+        // { "debugmask", cmdDebugMask },
+        // other commands go here....
+        };
+
+/* a top-level structure wraps the above and connects to the system table */
+/* it optionally includes a "first word" so you can for sure avoid name clashes */
+static cCommandStream::cDispatch
+sMyExtraCommands_top(
+        sMyExtraCommmands,          /* this is the pointer to the table */
+        sizeof(sMyExtraCommmands),  /* this is the size of the table */
+        nullptr                     /* this is no "first word" for all the commands in this table */
+        );
+
+/*
+
+Name:   ::setup_commands()
+
+Function:
+    setup()-time routine to register commands.
+
+Definition:
+    void ::setup_commands(void);
+
+Description:
+    The command table is registered.
+
+Returns:
+    No explicit result.
+
+*/
+
+void setup_commands()
+    {
+    /* add our application-specific commands */
+    gCatena.addCommands(
+        /* name of app dispatch table, passed by reference */
+        sMyExtraCommands_top,
+        /*
+        || optionally a context pointer using static_cast<void *>().
+        || normally only libraries (needing to be reentrant) need
+        || to use the context pointer.
+        */
+        nullptr
+        );
+    }
 
 /*
 
@@ -166,6 +238,58 @@ cCommandStream::CommandStatus cmdRxWindowTest(
         return cCommandStream::CommandStatus::kInvalidParameter;
 
     if (! gTest.evSendStartRxWindow())
+        {
+        pThis->printf("busy\n");
+        return cCommandStream::CommandStatus::kError;
+        }
+
+    return cCommandStream::CommandStatus::kSuccess;
+    }
+
+/*
+
+Name:   ::cmdTxWindowTest()
+
+Function:
+    Command dispatcher for "tw" command.
+
+Definition:
+    McciCatena::cCommandStream::CommandFn cmdTxWindowTest;
+
+    McciCatena::cCommandStream::CommandStatus cmdTxWindowTest(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        );
+
+Description:
+    The "tw" command takes no arguments. It starts the transmit part of
+    a receive window test. The transmit window test pulses a specific digital
+    output high, then waits a specified period of time and transmits a test
+    packet. It does this forever, or until canceled by the 'q' command.
+    This is normally coupled with a second Catena running the rw test.
+
+Returns:
+    cCommandStream::CommandStatus::kSuccess if successfully started.
+    Some other value for failure.
+
+*/
+
+// argv[0] is the matched command name.
+
+cCommandStream::CommandStatus cmdTxWindowTest(
+    cCommandStream *pThis,
+    void *pContext,
+    int argc,
+    char **argv
+    )
+    {
+
+    if (argc != 1)
+        return cCommandStream::CommandStatus::kInvalidParameter;
+
+    if (! gTest.evSendStartTxWindow())
         {
         pThis->printf("busy\n");
         return cCommandStream::CommandStatus::kError;

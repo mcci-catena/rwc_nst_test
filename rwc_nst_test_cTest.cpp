@@ -100,6 +100,9 @@ cTest::State cTest::fsmDispatch(
             case Command::StartRxWindow:
                 newState = State::stRxWindowTest;
                 break;
+            case Command::StartTxWindow:
+                newState = State::stTxWindowTest;
+                break;
 
             default:
                 // ignore
@@ -121,6 +124,11 @@ cTest::State cTest::fsmDispatch(
 
     case State::stRxWindowTest:
         if (this->rxWindowTest(fEntry))
+            newState = State::stIdle;
+        break;
+
+    case State::stTxWindowTest:
+        if (this->txWindowTest(fEntry))
             newState = State::stIdle;
         break;
 
