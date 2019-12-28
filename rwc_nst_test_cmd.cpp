@@ -27,6 +27,7 @@ McciCatena::cCommandStream::CommandFn cmdParam;
 McciCatena::cCommandStream::CommandFn cmdLog;
 McciCatena::cCommandStream::CommandFn cmdQuit;
 McciCatena::cCommandStream::CommandFn cmdTxWindowTest;
+McciCatena::cCommandStream::CommandFn cmdRxQuality;
 
 using namespace McciCatena;
 
@@ -47,6 +48,7 @@ static const cCommandStream::cEntry sMyExtraCommmands[] =
         { "param", cmdParam },
         { "log", cmdLog },
         { "q", cmdQuit },
+        { "rq", cmdRxQuality },
         // { "debugmask", cmdDebugMask },
         // other commands go here....
         };
@@ -522,6 +524,58 @@ cCommandStream::CommandStatus cmdQuit(
         return cCommandStream::CommandStatus::kInvalidParameter;
 
     gTest.evStopTest();
+
+    return cCommandStream::CommandStatus::kSuccess;
+    }
+
+/*
+
+Name:   ::cmdRxQuality()
+
+Function:
+    Command dispatcher for "rq" command.
+
+Definition:
+    McciCatena::cCommandStream::CommandFn cmdRxQuality
+
+    McciCatena::cCommandStream::CommandStatus cmdRxQuality(
+        cCommandStream *pThis,
+        void *pContext,
+        int argc,
+        char **argv
+        );
+
+Description:
+    The "rq" command takes no arguments. It just outputs
+    the most recent RSSI and SNRvalues from the LMIC.
+
+Returns:
+    cCommandStream::CommandStatus::kSuccess if successful.
+    Some other value for failure.
+
+*/
+
+// argv[0] is the matched command name.
+
+cCommandStream::CommandStatus cmdRxQuality(
+    cCommandStream *pThis,
+    void *pContext,
+    int argc,
+    char **argv
+    )
+    {
+    if (argc != 1)
+        return cCommandStream::CommandStatus::kInvalidParameter;
+
+    /* print the RSSI and SNR */
+    unsigned snr4 = LMIC.snr;
+    unsigned snrfrac = (snr4 < 0 ? -snr4 : snr4) & 0x3u;
+
+    pThis->printf("RSSI: %d dB\nSNR: %d.%02d dB\n",
+        LMIC.rssi - RSSI_OFF,
+        snr4 / 4, 
+        snrfrac * 25
+        );
 
     return cCommandStream::CommandStatus::kSuccess;
     }
