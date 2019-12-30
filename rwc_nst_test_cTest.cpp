@@ -17,6 +17,13 @@ Author:
 
 #include <strings.h>
 #include <mcciadk_baselib.h>
+#include <cmath>
+
+#if __cplusplus < 201703L
+ static constexpr float std_fabsf(float f) { return fabs(f); }
+#else
+ using std_fabsf = std::fabsf;
+#endif
 
 void cTest::begin()
     {
@@ -158,7 +165,7 @@ void cTest::setupLMIC(const cTest::Params &params)
     else
         LMIC.rxsyms = rxsym_t(params.RxSyms);
 
-    float clockError = (std::abs)(params.ClockError * MAX_CLOCK_ERROR / 100.0) + 0.5;
+    float clockError = std_fabsf(params.ClockError * MAX_CLOCK_ERROR / 100.0f) + 0.5f;
     LMIC_setClockError(clockError >= UINT16_MAX ? UINT16_MAX : u2_t(clockError));
 
     gCatena.SafePrintf("Freq=%u Hz, ", LMIC.freq);

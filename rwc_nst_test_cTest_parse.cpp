@@ -17,6 +17,13 @@ Author:
 
 #include <strings.h>
 #include <mcciadk_baselib.h>
+#include <cmath>    // for float fabs().
+
+#if __cplusplus < 201703L
+ static constexpr float std_fabsf(float f) { return fabs(f); }
+#else
+ using std_fabsf = std::fabsf;
+#endif
 
 const cTest::ParamInfo_t cTest::ParamInfo[] =
     {
@@ -100,7 +107,7 @@ bool cTest::getParamByKey(cTest::ParamKey key, char *pBuf, size_t nBuf) const
 
     case ParamKey::ClockError:
         {
-        unsigned ceppk = (std::abs)(this->m_params.ClockError * 10) + 0.5;
+        unsigned ceppk = std_fabsf(this->m_params.ClockError * 10.0f) + 0.5f;
         McciAdkLib_Snprintf(pBuf, nBuf, 0, "%u.%u%%", ceppk / 10, ceppk % 10);
         }
         break;

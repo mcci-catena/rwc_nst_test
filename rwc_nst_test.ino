@@ -41,12 +41,14 @@ using namespace McciCatena;
 
 Catena gCatena;
 Catena::LoRaWAN gLoRaWAN;
+#if defined(ARDUINO_ARCH_STM32)
 SPIClass gSPI2(
     Catena::PIN_SPI2_MOSI,
     Catena::PIN_SPI2_MISO,
     Catena::PIN_SPI2_SCK
     );
 Catena_Mx25v8035f gFlash;
+#endif
 cTest gTest;
 cEventQueue eventQueue;
 
@@ -121,6 +123,7 @@ void setup_printSignOn()
 
 void setup_flash(void)
     {
+#ifdef ARDUINO_ARCH_STM32
     if (gFlash.begin(&gSPI2, Catena::PIN_SPI2_FLASH_SS))
         {
         gFlash.powerDown();
@@ -132,6 +135,7 @@ void setup_flash(void)
         gSPI2.end();
         gCatena.SafePrintf("No FLASH found: check hardware\n");
         }
+#endif
     }
 
 void setup_lmic()

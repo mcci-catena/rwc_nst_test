@@ -209,18 +209,16 @@ public:
 
     static constexpr const char *getStateName(State s)
         {
-        switch (s)
-            {
-        case State::stNoChange: return "stNoChange";
-        case State::stInitial:  return "stInitial";
-        case State::stIdle:     return "stIdle";
-        case State::stTxTest:   return "stTxTest";
-        case State::stRxTest:   return "stRxTest";
-        case State::stRxWindowTest: return "stRxWindowTest";
-        case State::stTxWindowTest: return "stTxWindowTest";
-        case State::stFinal:    return "stFinal";
-        default:                return "<<unknown>>";
-            }
+        return 
+            s == State::stNoChange      ? "stNoChange" :
+            s == State::stInitial       ? "stInitial" :
+            s == State::stIdle          ? "stIdle" :
+            s == State::stTxTest        ? "stTxTest" :
+            s == State::stRxTest        ? "stRxTest" :
+            s == State::stRxWindowTest  ? "stRxWindowTest" :
+            s == State::stTxWindowTest  ? "stTxWindowTest" :
+            s == State::stFinal         ? "stFinal" :
+                                          "<<unknown>>";
         }
 
     //-----------------

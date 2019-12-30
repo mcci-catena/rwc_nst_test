@@ -19,7 +19,11 @@ Author:
 #include <Catena.h>
 #include <Catena_CommandStream.h>
 #include <Catena_FSM.h>
-#include <Catena_Mx25v8035f.h>
+
+#ifdef ARDUINO_ARCH_STM32
+# include <Catena_Mx25v8035f.h>
+#endif
+
 #include "rwc_nst_test_cTest.h"
 #include "rwc_nst_test_version.h"
 #include <SPI.h>
@@ -62,7 +66,9 @@ static constexpr const char *filebasename(const char *s)
 extern McciCatena::Catena gCatena;
 extern McciCatena::Catena::LoRaWAN gLoRaWAN;
 extern SPIClass gSPI2;
+#if defined(ARDUINO_ARCH_STM32)
 extern McciCatena::Catena_Mx25v8035f gFlash;
+#endif
 extern cTest gTest;
 
 #endif // _rwc_nst_test_h_
