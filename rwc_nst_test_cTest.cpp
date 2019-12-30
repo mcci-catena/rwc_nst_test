@@ -405,9 +405,9 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
 
             this->WindowAdjust =
                 LMICcore_adjustForDrift(
-                    this->Window +
-                        LMICcore_RxWindowOffset(hsym, LMICbandplan_MINRX_SYMS_LoRa_ClassA),
-                    hsym
+                    this->Window,
+                    hsym,
+                    LMICbandplan_MINRX_SYMS_LoRa_ClassA
                     );
 
             gCatena.SafePrintf(
@@ -444,7 +444,7 @@ cTest::RwTest_t::State cTest::RwTest_t::fsmDispatch(
 
         if (this->pTest->m_fStopTest)
             newState = State::stFinal;
-        else if (os_getTime() - (LMIC.rxtime - RX_RAMPUP) > 0)
+        else if (os_getTime() - (LMIC.rxtime - os_getRadioRxRampup()) > 0)
             newState = State::stRxWindow;
         break;
 

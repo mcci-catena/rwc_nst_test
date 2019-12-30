@@ -22,6 +22,10 @@ Author:
 
 using namespace McciCatena;
 
+#if ARDUINO_LMIC_VERSION < ARDUINO_LMIC_VERSION_CALC(3,0,99,10)
+# error "This sketch requires v3.99.0.10 or later of the LMIC"
+#endif
+
 /****************************************************************************\
 |
 |   Manifest constants
